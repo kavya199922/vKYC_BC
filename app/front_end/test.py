@@ -23,26 +23,26 @@ import pandas as pd
 #     print(bank, username, password)
 
 #### Upload PAN and Aadhar ####
-PAN_file = st.file_uploader("Upload PAN as PDF", type=['pdf'], key='PAN')
-if PAN_file is not None:
-    #  # To read file as bytes:
-    #  bytes_data = uploaded_file.getvalue()
-    #  st.write(bytes_data)
+# PAN_file = st.file_uploader("Upload PAN as PDF", type=['pdf'], key='PAN')
+# if PAN_file is not None:
+#     #  # To read file as bytes:
+#     #  bytes_data = uploaded_file.getvalue()
+#     #  st.write(bytes_data)
 
-    #  # To convert to a string based IO:
-    #  stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
-    #  st.write(stringio)
+#     #  # To convert to a string based IO:
+#     #  stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
+#     #  st.write(stringio)
 
-    #  # To read file as string:
-    #  string_data = stringio.read()
-    #  st.write(string_data)
+#     #  # To read file as string:
+#     #  string_data = stringio.read()
+#     #  st.write(string_data)
 
-    #  # Can be used wherever a "file-like" object is accepted:
-    #  dataframe = pd.read_csv(uploaded_file)
-    #  st.write(dataframe)
+#     #  # Can be used wherever a "file-like" object is accepted:
+#     #  dataframe = pd.read_csv(uploaded_file)
+#     #  st.write(dataframe)
 
-    print("PAN uploaded")
+#     print("PAN uploaded")
 
-Aadhar_file = st.file_uploader("Upload Aadhar as PDF", type=['pdf'], key='Aadhar')
-if Aadhar_file is not None:
-    print("Aadhar uploaded")
+# Aadhar_file = st.file_uploader("Upload Aadhar as PDF", type=['pdf'], key='Aadhar')
+# if Aadhar_file is not None:
+#     print("Aadhar uploaded")
