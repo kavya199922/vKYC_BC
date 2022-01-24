@@ -1,5 +1,9 @@
 import streamlit as st
 import pandas as pd
+import rekognition
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 #### KYC Customer Login ####
 # st.title("KYC Customer Login")
@@ -46,3 +50,13 @@ import pandas as pd
 # Aadhar_file = st.file_uploader("Upload Aadhar as PDF", type=['pdf'], key='Aadhar')
 # if Aadhar_file is not None:
 #     print("Aadhar uploaded")
+
+# Rekognition object
+client = rekognition.Rekognition(access_key = os.environ.get('access_key_id'),secret_key=os.environ.get('secret_key_id'),region=os.environ.get('region'))
+print(client.access_key,client.secret_key)
+source_image = '/path/to/src/image'
+target_image = '/path/to/target/image'
+image_path = '/path/to/image'
+client.compare_faces(src_image,target_image)
+client.detect_faces(image_path)
+client.detect_text(image_path)
