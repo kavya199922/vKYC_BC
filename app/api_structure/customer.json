@@ -1,0 +1,38 @@
+
+//store in BC
+{
+    "mobile_number":"",
+    "kyc_number":"",
+    "expiry_date":"",
+    "kyc_status":"" //["notstarted","inprogress","submitted","pending","approved/failed"]
+}
+
+
+
+//request
+{
+    "mobile_number":"",
+    "password":"",
+    "private_key":""
+    }
+
+//kyc
+{
+    "pan":"",
+    "aadhar":"",
+    "selfie":"",
+    "video":"",
+    "location":{"lat":"","long":""},
+    "consolidatedfile":"", //with our results
+    
+}
+
+//employee - view requests
+{
+    "consolidatedfile":""
+}
+
+{
+    "consolidatedfile":"",
+    "status":""
+}

@@ -1,0 +1,32 @@
+//store in BC
+{
+"bank_name":"HDFC",
+"employees":[
+        {
+            "employee_name":"",
+            "username":"",
+            "designation":""
+        }
+]
+
+
+
+}
+// request
+
+{
+    "bank_name":"HDFC",
+    "password":"",
+    "private_key":"",
+    "employees":[
+            {
+                "employee_name":"",
+                "username":"",
+                "password":"",
+                "private_key":""
+            }
+    ]
+    
+    
+    
+}
