@@ -18,7 +18,8 @@ from sawtooth_sdk.protobuf.batch_pb2 import Batch
 
 # The Transaction Family Name
 FAMILY_NAME_BANK = 'bank'
-
+FAMILY_NAME_CUSTOMER = 'customer'
+FAMILY_NAME_USER = 'user'
 
 
 
@@ -29,7 +30,7 @@ def create_address(mode='user',name='name',private_key='key',family_name='defaul
      return _hash(family_name.encode())[:6]+_hash(mode.encode())[:6]+_hash(name.encode())[:52]+_hash(str(private_key).encode())[:6]
 
 
-class KycbankClient(object):
+class KycClient(object):
     '''Client  class
     
     Supports "create" function.
@@ -51,32 +52,19 @@ class KycbankClient(object):
         print('Public-Key is ',self._public_key)
         print(len(self._public_key))
         self._private_key = key
-        
 
-    
-     
-     
-    def add(self,org_info,password):
+
+    def create_user(self,info,password):
         '''
-        Adds a new party to blockchain
+        Adds a new party to blockchain - customer/bank
         '''
         print('inside add tx.py')
         print('address')
-        paddr=create_address(mode=password,name=org_info['name'],private_key=self._private_key,family_name = FAMILY_NAME_ORG)
-        print(paddr)
-        print(org_info)
-        org_info['action'] ='add'
-        result = self._wrap_and_send(paddr,org_info,family_name = FAMILY_NAME_ORG)
-    
+        paddr=create_address(mode=password,name=info['name'],private_key=self._private_key,family_name = FAMILY_NAME_USER)
+        info['action'] ='add bank' if info['user_type'] =='BANK' else 'add employee' if  info['user_type'] =='BANK EMPLOYEE' else 'add customer'
+        result = self._wrap_and_send(paddr,info,family_name = FAMILY_NAME_USER)
 
-
-
-  
-
-
-    
-    
-		
+	
     def _send_to_rest_api(self, suffix, data=None, content_type=None):
         '''
         sends request to rest api

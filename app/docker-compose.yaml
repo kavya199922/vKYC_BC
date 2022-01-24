@@ -14,7 +14,7 @@ services:
     depends_on:
         - validator
     volumes:
-        - '.:/project/app/'
+        - '.:/project/app/processor'
 
   kyc-client:
     container_name: kyc-client
@@ -35,10 +35,10 @@ services:
       - 'https_proxy=${https_proxy}'
       - 'no_proxy=rest-api,validator,${no_proxy}'
     volumes:
-      - '.:/project/app/'
+      - '.:/project/app/client'
     depends_on:
       - sawtooth-rest-api
-    entrypoint: "bash -c \"sawtooth keygen --force votingjar && tail -f /dev/null\""
+    entrypoint: "bash -c \"sawtooth keygen --force kyc && tail -f /dev/null\""
     stop_signal: SIGKILL
 
   sawtooth-rest-api:

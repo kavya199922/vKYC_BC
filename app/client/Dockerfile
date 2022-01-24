@@ -80,7 +80,7 @@ RUN \
 
 RUN python3 -m pip install --upgrade "pip < 19.2" && python3 -m pip install --upgrade "pip < 21.0"
 
-RUN   pip install  --ignore-installed streamlit
+# RUN   pip install  --ignore-installed streamlit
 
 
 COPY . /project/app/client
