@@ -4,8 +4,7 @@
 "employees":[
         {
             "employee_name":"",
-            "username":"",
-            "designation":""
+            "email_id":""
         }
 ]
 
@@ -21,7 +20,7 @@
     "employees":[
             {
                 "employee_name":"",
-                "username":"",
+                "email_id":"",
                 "password":"",
                 "private_key":""
             }
