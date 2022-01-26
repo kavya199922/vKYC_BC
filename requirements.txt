@@ -3,3 +3,5 @@ mtcnn
 boto3
 pandas
 opencv-python
+tensorflow
+python-dotenv
