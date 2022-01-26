@@ -7,11 +7,27 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 import cv2
+import base64
 os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 
+def displayPDF(file):
+    # Opening file from file path
+    with open(file, "rb") as f:
+        base64_pdf = base64.b64encode(f.read()).decode('utf-8')
 
-user_types = ['Customer', 'Bank Employee', 'Bank Admin']
-banks_list = ['HDFC', 'ICICI']
+    # Embedding PDF in HTML
+    pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
+
+    # Displaying File
+    st.markdown(pdf_display, unsafe_allow_html=True)
+
+user_types = ['Customer', 'Bank Employee']
+banks_list = ['HDFC', 'ICICI', 'Kotak']
+user_table = pd.DataFrame({
+                'Name' : ['Kavya', 'Skanda', 'Vishnu'],
+                'Mobile Number' : ['927484982', '973729393', '937378484'],
+                'Status' : ['Approved', 'Pending', 'Pending']
+            })
 
 
 print(default_initial_vars)
@@ -28,9 +44,21 @@ if st.sidebar.button("Sign Up"):
 
 if st.sidebar.button("Home"):
     st.session_state['page'] = 'Home'
+    if 'sub_page' not in st.session_state :
+        if st.session_state['user_type'] == 'Customer' :
+            st.session_state['sub_page'] = 'Choose Bank'
+        if st.session_state['user_type'] == 'Bank Employee' :
+            st.session_state['sub_page'] = 'List View'
 
+if st.sidebar.button("Requests"):
+    st.session_state['page'] = 'Requests'
+
+
+# Sign Up
 if st.session_state['page'] == 'Sign Up':
     user_type = st.selectbox('User Type', user_types)
+
+    # Customer
     if user_type == 'Customer':
         st.title("KYC Customer Sign Up")
         mobile_num = st.text_input("Mobile Number")
@@ -49,7 +77,7 @@ if st.session_state['page'] == 'Sign Up':
                 st.info('Your private key is ' + private_key + \
                         '. Note down and use while logging in.')
 
-
+    # Employee
     if user_type == 'Bank Employee':
         st.title("KYC Bank Employee Sign Up")
 
@@ -71,44 +99,51 @@ if st.session_state['page'] == 'Sign Up':
                 st.info('Your private key is ' + private_key + \
                         '. Note down and use while logging in.')
 
-
+# Sign In
 if st.session_state['page'] == 'Sign In':
 
     user_type = st.selectbox('User Type', user_types)
     st.session_state['user_type'] = user_type
 
+    # Customer
     if user_type == 'Customer':
         st.title("KYC Customer Sign In")
 
         mobile_num = st.text_input("Mobile Number")
         password = st.text_input("Password", type='password')
-        password = st.text_input("Private Key")
+        private_key = st.text_input("Private Key")
 
         if st.button("Sign In", key='1'):
-            st.success("Signed In successfully")
+            st.success("Signed in successfully. Go to \"Home\"")
             st.session_state['signed_in'] = True
 
+    # Employee
     if user_type == 'Bank Employee':
         st.title("KYC Employee Sign In")
 
         email_id = st.text_input("Email ID")
         password = st.text_input("Password", type='password')
-        password = st.text_input("Private Key")
+        private_key = st.text_input("Private Key")
 
         if st.button("Sign In", key='2'):
-            st.success("Signed In successfully")
+            st.success("Signed in successfully. Go to \"Home\"")
             st.session_state['signed_in'] = True
 
+
+# Home
 if st.session_state['page'] == 'Home':
 
     if st.session_state['signed_in']:
+        # Customer
         if st.session_state['user_type'] == 'Customer':
             st.title("KYC Customer Upload Docs")
+
             if st.session_state['sub_page'] == 'Choose Bank':
                 st.subheader("Step 1: Choose verifier bank")
                 verifier_bank = st.selectbox('Bank', banks_list)
                 if st.button('Next', key='uploadscreenbtn'):
                     st.session_state['sub_page'] = 'Upload Docs'
+
             if st.session_state['sub_page'] == 'Upload Docs':
                 st.subheader("Step 2: Upload Documents")
                 PAN_file = st.file_uploader(
@@ -142,13 +177,13 @@ if st.session_state['page'] == 'Home':
                 frame_aadhar = st.empty()
                 vid_obj = cv2.VideoCapture(0) 
                 success = True
-                while success:
-                    success, image = vid_obj.read()
-                    frame_aadhar.image(image, channels="BGR")
-                    faces = st.session_state["mtcnn"].detect_faces(image)
-                    print(len(faces))
-                    resp = st.session_state["rekog_object"].client.detect_faces(Image={'Bytes': cv2.imencode('.jpg', image)[1].tobytes()})
-                    print(resp)
+                # while success:
+                #     success, image = vid_obj.read()
+                #     frame_aadhar.image(image, channels="BGR")
+                #     faces = st.session_state["mtcnn"].detect_faces(image)
+                #     print(len(faces))
+                #     resp = st.session_state["rekog_object"].client.detect_faces(Image={'Bytes': cv2.imencode('.jpg', image)[1].tobytes()})
+                #     print(resp)
                     
                     
                 st.markdown("**2. PAN**")
@@ -165,6 +200,111 @@ if st.session_state['page'] == 'Home':
 
             if st.session_state['sub_page'] == 'KYC Status':
                 st.title('KYC submitted and pending for approval')
+
+        # Employee
+        if st.session_state['user_type'] == 'Bank Employee':
+            print(st.session_state)
+            # if st.session_state['sub_page'] == 'List View' :
+            if True :
+
+                colms = st.columns((1, 2, 2, 1, 1))
+                fields = ['S.No', 'Name', 'Mobile Number', 'Verified', 'Action']
+
+                for col, field_name in zip(colms, fields):
+                    # header
+                    col.write(field_name)
+
+                for x, email in enumerate(user_table['Name']):
+                    col1, col2, col3, col4, col5 = st.columns((1, 2, 2, 1, 1))
+                    col1.write(x)
+                    col2.write(user_table['Name'][x])
+                    col3.write(user_table['Mobile Number'][x])
+                    status = user_table['Status'][x]
+                    col4.write(status) # flexible type of button
+                    # button_type = "Unblock" if verified else "Block"
+                    button_phold = col5.empty()  # create a placeholder
+                    if status == 'Pending' :
+                        do_action = button_phold.button("View", key=x)
+                        if do_action :
+                            st.session_state['sub_page'] = 'Detailed View'
+                            st.session_state['current_customer'] = {
+                                "ID" : x,
+                                "Mobile Number" : user_table['Mobile Number'][x],
+                                "Name" : user_table['Name'][x]
+                            }
+
+            st.components.v1.html("""<hr style="height:2px;border:none;color:#333;background-color:#333;" /> """)
+            
+            if st.session_state['sub_page'] == 'Detailed View' :
+                # if st.button('Back') :
+                #     st.session_state['sub_page'] = 'List View'
+                if 'current_customer' in st.session_state :
+                    st.subheader("Details")
+                    st.write(st.session_state['current_customer'])
+                    st.subheader("Aadhar card PDF")
+                    displayPDF('/home/vishnupriyaa/Desktop/Installations and Steps/HiveInstallation.pdf')
+                    st.subheader("PAN card PDF")
+                    displayPDF('/home/vishnupriyaa/Desktop/Installations and Steps/HiveInstallation.pdf')
+                    st.subheader("Selfie")
+                    st.image("/home/vishnupriyaa/Desktop/Laptop/Pictures/Screenshots 1/Screenshot (178).png")
+                    st.subheader("Video")
+                    st.video("/home/vishnupriyaa/Desktop/AWS Cloud Synapt Demo Videos/Login.mp4")
+                    st.subheader("Findings")
+                    st.write({
+                        "Face match" : "80%",
+                        "Address match" : True,
+                        "Phone number match" : True
+                    })
+                    st.write("\n")
+
+                    c1, c2 = st.columns((3,3))
+                    if c1.button("Approve KYC") :
+                        user_table["Status"][st.session_state['current_customer']['ID']] = 'Approved'
+                        st.session_state['sub_page'] = 'List View'
+                    if c2.button("Reject KYC") :
+                        user_table["Status"][st.session_state['current_customer']['ID']] = 'Rejected'
+                        st.session_state['sub_page'] = 'List View'
+
+    else:
+        st.error("Please Sign in")
+
+# Requests
+if st.session_state['page'] == 'Requests':
+
+    if st.session_state['signed_in']:
+        if st.session_state['user_type'] == 'Customer':
+            st.title("KYC Access Requests")
+            requests = pd.DataFrame({
+                "Bank" : ["ICICI", "Kotak"]
+            })
+            colms = st.columns((1, 2, 2, 1, 1))
+            fields = ['S.No', 'Name', 'Mobile Number', 'Verified', 'Action']
+
+            for col, field_name in zip(colms, fields):
+                # header
+                col.write(field_name)
+
+            for x, email in enumerate(user_table['Name']):
+                col1, col2, col3, col4, col5 = st.columns((1, 2, 2, 1, 1))
+                col1.write(x)
+                col2.write(user_table['Name'][x])
+                col3.write(user_table['Mobile Number'][x])
+                status = user_table['Status'][x]
+                col4.write(status) # flexible type of button
+                # button_type = "Unblock" if verified else "Block"
+                button_phold = col5.empty()  # create a placeholder
+                if status == 'Pending' :
+                    do_action = button_phold.button("View", key=x)
+                    if do_action :
+                        st.session_state['sub_page'] = 'Detailed View'
+                        st.session_state['current_customer'] = {
+                            "ID" : x,
+                            "Mobile Number" : user_table['Mobile Number'][x],
+                            "Name" : user_table['Name'][x]
+                        }
+
+        if st.session_state['user_type'] == 'Bank Employee':
+            st.title("KYC Access Requests")
 
     else:
         st.error("Please Sign in")
