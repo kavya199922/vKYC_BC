@@ -1,0 +1,5 @@
+streamlit
+mtcnn
+boto3
+pandas
+opencv-python
