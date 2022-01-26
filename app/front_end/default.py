@@ -5,7 +5,7 @@ load_dotenv()
 from mtcnn.mtcnn import MTCNN
 
 default_initial_vars = {
-    "page": "Sign In", 
+#     "page": "Sign In", 
     "signed_in": False, 
     "user_type": 'Customer', 
     "otp_sent": False, 

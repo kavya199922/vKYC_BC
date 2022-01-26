@@ -10,6 +10,7 @@ import cv2
 import base64
 os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 
+
 def displayPDF(file):
     # Opening file from file path
     with open(file, "rb") as f:
@@ -21,6 +22,7 @@ def displayPDF(file):
     # Displaying File
     st.markdown(pdf_display, unsafe_allow_html=True)
 
+
 user_types = ['Customer', 'Bank Employee']
 banks_list = ['HDFC', 'ICICI', 'Kotak']
 user_table = pd.DataFrame({
@@ -28,6 +30,10 @@ user_table = pd.DataFrame({
                 'Mobile Number' : ['927484982', '973729393', '937378484'],
                 'Status' : ['Approved', 'Pending', 'Pending']
             })
+session_params = [
+    'page', 'user_type', 'sub_page', 'otp_sent', 'signed_in', 'current_customer',
+    'mtcnn', 'rekog_object'
+]
 
 
 print(default_initial_vars)
@@ -36,11 +42,19 @@ for key in default_initial_vars:
         st.session_state[key] = default_initial_vars[key]
 
 
+# Default Page
+if 'page' not in st.session_state :
+    if st.session_state['signed_in'] :
+        st.session_state['page'] = 'Home'
+    else :
+        st.session_state['page'] = 'Sign In'
+
+# Sidebar
 if st.sidebar.button("Sign In"):
     st.session_state['page'] = 'Sign In'
 
 if st.sidebar.button("Sign Up"):
-    st.session_state['page'] = 'Sign Up'
+    st.session_state['page'] = 'Sign Up'   
 
 if st.sidebar.button("Home"):
     st.session_state['page'] = 'Home'
@@ -50,8 +64,17 @@ if st.sidebar.button("Home"):
         if st.session_state['user_type'] == 'Bank Employee' :
             st.session_state['sub_page'] = 'List View'
 
-if st.sidebar.button("Requests"):
+if st.sidebar.button("KYC Access Requests"):
     st.session_state['page'] = 'Requests'
+
+if st.sidebar.button("Logout"):
+    st.session_state['page'] = 'Logout'
+    if st.session_state['signed_in'] :
+        st.session_state = default_initial_vars.copy()
+        st.session_state['page'] = 'Logout'
+        st.title("You have successfully logged out")
+    else :
+        st.error("Please Sign in")
 
 
 # Sign Up
@@ -119,7 +142,7 @@ if st.session_state['page'] == 'Sign In':
 
     # Employee
     if user_type == 'Bank Employee':
-        st.title("KYC Employee Sign In")
+        st.title("KYC Bank Employee Sign In")
 
         email_id = st.text_input("Email ID")
         password = st.text_input("Password", type='password')
@@ -136,7 +159,7 @@ if st.session_state['page'] == 'Home':
     if st.session_state['signed_in']:
         # Customer
         if st.session_state['user_type'] == 'Customer':
-            st.title("KYC Customer Upload Docs")
+            st.title("KYC Customer Home")
 
             if st.session_state['sub_page'] == 'Choose Bank':
                 st.subheader("Step 1: Choose verifier bank")
@@ -203,18 +226,19 @@ if st.session_state['page'] == 'Home':
 
         # Employee
         if st.session_state['user_type'] == 'Bank Employee':
-            print(st.session_state)
+            st.title("KYC List")
             # if st.session_state['sub_page'] == 'List View' :
             if True :
 
                 colms = st.columns((1, 2, 2, 1, 1))
-                fields = ['S.No', 'Name', 'Mobile Number', 'Verified', 'Action']
+                fields = ['##### S.No', '##### Name', '##### Mobile Number', '##### Verified', '##### Action']
 
                 for col, field_name in zip(colms, fields):
                     # header
                     col.write(field_name)
+                st.write("\n")
 
-                for x, email in enumerate(user_table['Name']):
+                for x, mobile_num in enumerate(user_table['Name']):
                     col1, col2, col3, col4, col5 = st.columns((1, 2, 2, 1, 1))
                     col1.write(x)
                     col2.write(user_table['Name'][x])
@@ -272,42 +296,73 @@ if st.session_state['page'] == 'Home':
 if st.session_state['page'] == 'Requests':
 
     if st.session_state['signed_in']:
+        # Customer
         if st.session_state['user_type'] == 'Customer':
             st.title("KYC Access Requests")
-            requests = pd.DataFrame({
-                "Bank" : ["ICICI", "Kotak"]
+
+            requests_table = pd.DataFrame({
+                "Bank" : ["ICICI", "Kotak"],
+                "Status" : ["Approved", "Pending"]
             })
             colms = st.columns((1, 2, 2, 1, 1))
-            fields = ['S.No', 'Name', 'Mobile Number', 'Verified', 'Action']
+            fields = ['##### S.No', '##### Bank', '##### Request Status', '##### Action']
 
             for col, field_name in zip(colms, fields):
                 # header
                 col.write(field_name)
+            st.write("\n")
 
-            for x, email in enumerate(user_table['Name']):
+            for x, bank in enumerate(requests_table['Bank']):
                 col1, col2, col3, col4, col5 = st.columns((1, 2, 2, 1, 1))
                 col1.write(x)
-                col2.write(user_table['Name'][x])
-                col3.write(user_table['Mobile Number'][x])
-                status = user_table['Status'][x]
-                col4.write(status) # flexible type of button
+                col2.write(requests_table['Bank'][x])
+                status = requests_table['Status'][x]
+                col3.write(status) # flexible type of button
                 # button_type = "Unblock" if verified else "Block"
-                button_phold = col5.empty()  # create a placeholder
+                button_phold1 = col4.empty()  # create a placeholder
+                button_phold2 = col5.empty()  # create a placeholder
                 if status == 'Pending' :
-                    do_action = button_phold.button("View", key=x)
-                    if do_action :
-                        st.session_state['sub_page'] = 'Detailed View'
-                        st.session_state['current_customer'] = {
-                            "ID" : x,
-                            "Mobile Number" : user_table['Mobile Number'][x],
-                            "Name" : user_table['Name'][x]
-                        }
+                    do_action1 = button_phold1.button("Approve", key=x)
+                    do_action2 = button_phold2.button("Reject", key=x)
+                    if do_action1 :
+                        st.write(x,"Approved")
+                    if do_action2 :
+                        st.write(x,"Rejected")
 
+        # Employee
         if st.session_state['user_type'] == 'Bank Employee':
             st.title("KYC Access Requests")
 
+            request_mobile_num = st.text_input("Mobile Number")
+            if st.button("Send Request") :
+                st.success("Request has been sent")
+
+            st.write("\n\n")
+            st.subheader("Request List")
+            requests_table = pd.DataFrame({
+                "Name" : ["Skanda", "Kavya", "Vishnu"],
+                "Mobile Number" : ["937282399", "9747378822", "977647387"],
+                "Status" : ["Approved", "Rejected", "Pending"]
+            })
+            colms = st.columns((1, 2, 2, 2))
+            fields = ['##### S.No', '##### Name', '##### Mobile Number', '##### Request Status']
+
+            for col, field_name in zip(colms, fields):
+                # header
+                col.write(field_name)
+            st.write("\n")
+
+            for x, bank in enumerate(requests_table['Name']):
+                col1, col2, col3, col4 = st.columns((1, 2, 2, 2))
+                col1.write(x)
+                col2.write(requests_table['Name'][x])
+                col3.write(requests_table['Mobile Number'][x])
+                col4.write(requests_table['Status'][x])
+
     else:
         st.error("Please Sign in")
+    
+
 
 
 
