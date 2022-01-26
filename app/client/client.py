@@ -54,6 +54,7 @@ def accept_kyc():
     details = request.get_json(force=True)
     client = KycClient(key = details['user_data']['private_key'])
     resp = client.accept_kyc_request(details)
+    print(resp)
     return jsonify(data=resp)
 
 @app.route('/reject_kyc_request',methods= ['GET','POST'])
