@@ -13,10 +13,18 @@ if 'page' not in st.session_state :
 
 if st.sidebar.button("Sign In") :
     st.session_state['page'] = 'Sign In'
+    st.session_state['user_type'] = ''
+    if 'signed_in' not in st.session_state :
+        st.session_state['signed_in'] = False
 
 if st.sidebar.button("Sign Up") :
     st.session_state['page'] = 'Sign Up'
     st.session_state['otp_sent'] = False
+
+if st.sidebar.button("Home") :
+    st.session_state['page'] = 'Home'
+    if 'sub_page' not in st.session_state :
+        st.session_state['sub_page'] = 'Upload Docs'
 
 if st.session_state['page'] == 'Sign Up' :
 
@@ -67,6 +75,7 @@ if st.session_state['page'] == 'Sign Up' :
 if st.session_state['page'] == 'Sign In' :
 
     user_type = st.selectbox('User Type', user_types)
+    st.session_state['user_type'] = user_type
 
     if user_type == 'Customer' :
         st.title("KYC Customer Sign In")
@@ -76,7 +85,8 @@ if st.session_state['page'] == 'Sign In' :
         password = st.text_input("Private Key")
 
         if st.button("Sign In", key='1') :
-            st.info('Signed in successfully')
+            st.success("Signed In successfully")
+            st.session_state['signed_in'] = True
 
     if user_type == 'Bank Employee' :
         st.title("KYC Employee Sign In")
@@ -86,37 +96,63 @@ if st.session_state['page'] == 'Sign In' :
         password = st.text_input("Private Key")
 
         if st.button("Sign In", key='2') :
-            st.info('Signed in successfully')
+            st.success("Signed In successfully")
+            st.session_state['signed_in'] = True
+
+if st.session_state['page'] == 'Home' :
+
+    if st.session_state['signed_in'] :
+        if st.session_state['user_type'] == 'Customer' :
+            if st.session_state['sub_page'] == 'Upload Docs' :
+                PAN_file = st.file_uploader("Upload PAN as PDF", type=['pdf'], key='PAN')
+                if PAN_file is not None:
+                    #  # To read file as bytes:
+                    #  bytes_data = uploaded_file.getvalue()
+                    #  st.write(bytes_data)
+
+                    #  # To convert to a string based IO:
+                    #  stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
+                    #  st.write(stringio)
+
+                    #  # To read file as string:
+                    #  string_data = stringio.read()
+                    #  st.write(string_data)
+
+                    #  # Can be used wherever a "file-like" object is accepted:
+                    #  dataframe = pd.read_csv(uploaded_file)
+                    #  st.write(dataframe)
+
+                    print("PAN uploaded")
+
+                Aadhar_file = st.file_uploader("Upload Aadhar as PDF", type=['pdf'], key='Aadhar')
+                if Aadhar_file is not None:
+                    print("Aadhar uploaded")
+
+                if st.button('Next', key='1') :
+                    st.session_state['sub_page'] = 'Take Selfie'
+
+            if st.session_state['sub_page'] == 'Take Selfie' :
+                selfie = st.camera_input('Take a Selfie')
+                video = st.camera_input('Take a Video')
+
+                if st.button('Next', key='2') :
+                    st.session_state['sub_page'] = 'Confirmation'
+
+            if st.session_state['sub_page'] == 'Confirmation' :
+                st.title('Confirm your Documents, Selfie and Video')
+
+                if st.button('Confirm and Submit KYC', key='2') :
+                    st.session_state['sub_page'] = 'KYC Status'
+
+            if st.session_state['sub_page'] == 'KYC Status' :
+                st.title('KYC sumbitted and pending for approval')
+
+    else :
+        st.error("Please Sign in")
            
 
         
 
-
-
-#### Upload PAN and Aadhar ####
-# PAN_file = st.file_uploader("Upload PAN as PDF", type=['pdf'], key='PAN')
-# if PAN_file is not None:
-#     #  # To read file as bytes:
-#     #  bytes_data = uploaded_file.getvalue()
-#     #  st.write(bytes_data)
-
-#     #  # To convert to a string based IO:
-#     #  stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
-#     #  st.write(stringio)
-
-#     #  # To read file as string:
-#     #  string_data = stringio.read()
-#     #  st.write(string_data)
-
-#     #  # Can be used wherever a "file-like" object is accepted:
-#     #  dataframe = pd.read_csv(uploaded_file)
-#     #  st.write(dataframe)
-
-#     print("PAN uploaded")
-
-# Aadhar_file = st.file_uploader("Upload Aadhar as PDF", type=['pdf'], key='Aadhar')
-# if Aadhar_file is not None:
-#     print("Aadhar uploaded")
 
 # Rekognition object
 # client = rekognition.Rekognition(access_key = os.environ.get('access_key_id'),secret_key=os.environ.get('secret_key_id'),region=os.environ.get('region'))
