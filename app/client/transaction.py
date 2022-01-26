@@ -6,6 +6,7 @@ import random
 import time
 import requests
 import yaml
+import datetime
 from sawtooth_signing import create_context
 from sawtooth_signing import CryptoFactory
 from sawtooth_signing import ParseError
@@ -17,9 +18,9 @@ from sawtooth_sdk.protobuf.batch_pb2 import BatchHeader
 from sawtooth_sdk.protobuf.batch_pb2 import Batch
 
 # The Transaction Family Name
-FAMILY_NAME_BANK = 'bank'
 FAMILY_NAME_CUSTOMER = 'customer'
-FAMILY_NAME_USER = 'user'
+FAMILY_NAME_BANK = 'bank'
+
 
 
 
@@ -36,10 +37,10 @@ class KycClient(object):
     Supports "create" function.
     '''
 
-    def __init__(self, base_url, key=None,signer=None,public_key=None):
+    def __init__(self, key=None,signer=None,public_key=None):
         '''Initialize the client class.
         '''
-        self._base_url = base_url
+        self._base_url = 'http://10.168.126.150:8008'
         if key is None:
             self._signer = None
             return
@@ -53,6 +54,193 @@ class KycClient(object):
         print(len(self._public_key))
         self._private_key = key
 
+    def add_kyc_details(self,kyc_details):
+        kyc_details['kyc_data']['status'] = 'SUBMITTED'
+        kyc_number = str(_hash(kyc_details['user_data']['mobile_number'].encode('utf-8'))[:6] + _hash('customer'.encode('utf-8'))[:4])
+        kyc_data={kyc_number:kyc_details['kyc_data']}
+        kyc_data['action'] ='add new kyc'
+        paddr = _hash('kyc_customer'.encode('utf-8'))[0:35] + _hash(kyc_number.encode('utf-8'))[0:35] 
+        # #create address : kyc -add(C),status_change(BankEmployee only if status : submitted and assigned to is bank of that employee),View(ALL)
+        result = self._wrap_and_send(paddr,kyc_data,family_name = FAMILY_NAME_CUSTOMER)
+        # result = json.loads(result)
+        #update kyc number in customer data 
+        user_data = kyc_details['user_data']
+        user_data['kyc_number'] = kyc_number
+        user_data['action'] = 'update customer'
+        paddr=create_address(mode=kyc_details['user_data']['password'],name=user_data['mobile_number'],private_key=self._private_key,family_name = FAMILY_NAME_CUSTOMER)
+        result = self._wrap_and_send(paddr,user_data,family_name = FAMILY_NAME_CUSTOMER)
+        # add to pending lists in bank
+        self.update_pending_lists_bank(kyc_details['kyc_data']['assigned_to'],kyc_number)
+        return kyc_number
+    def update_pending_lists_bank(self,bank_name,kyc_number,action=''):
+        paddr = _hash('pending_bank'.encode('utf-8'))[0:35] + _hash(kyc_number.encode('utf-8'))[0:35]
+        print(paddr)
+        res = requests.get(url = self._base_url+"/state/{}".format(paddr))
+        print(res.status_code,type(res.status_code))
+
+        if res.status_code== 404:
+            print('000')
+            # create pending lists
+            pending_lists = [kyc_number]
+            data = {'bank_name':bank_name,"pending_list":pending_lists,'action':'add pending list'}        
+            result = self._wrap_and_send(paddr,data,family_name = FAMILY_NAME_BANK)
+        else:
+            print('inside else')
+            pending_lists= json.loads(base64.b64decode(yaml.safe_load(res.text)["data"]).decode('utf-8'))
+            # print(pending_lists)
+            if action == 'pop':
+                print('going to update')
+                print(pending_lists)
+                pending_lists['pending_list'].remove(kyc_number)
+            else:
+                pending_lists['pending_list'].append(kyc_number)
+            print(pending_lists)
+            data = {'bank_name':bank_name,"pending_list":pending_lists,'action':'update pending list'}
+            result = self._wrap_and_send(paddr,data,family_name = FAMILY_NAME_BANK)
+        return result
+    
+    def update_pending_requests_customer(self,bank_name,kyc_number,action=''):
+        paddr = _hash('pending_customer'.encode('utf-8'))[0:35] + _hash(kyc_number.encode('utf-8'))[0:35]
+        print(paddr)
+        res = requests.get(url = self._base_url+"/state/{}".format(paddr))
+        print(res.status_code,type(res.status_code))
+
+        if res.status_code== 404:
+            print('000')
+            # create pending lists
+            pending_lists = [bank_name]
+            data = {"kyc_number":kyc_number,"pending_banks":pending_lists,'action':'add pending bank'}        
+            result = self._wrap_and_send(paddr,data,family_name = FAMILY_NAME_CUSTOMER)
+        else:
+            print('inside else')
+            pending_lists= json.loads(base64.b64decode(yaml.safe_load(res.text)["data"]).decode('utf-8'))
+            print(pending_lists)
+            if action == 'pop':
+                print('going to update')
+                print(pending_lists)
+                pending_lists['pending_banks'].remove(bank_name)
+            else:
+                pending_lists['pending_banks'].append(bank_name)
+            print(pending_lists)
+            data = {"kyc_number":kyc_number,"pending_banks":pending_lists,'action':'update pending bank'}
+            result = self._wrap_and_send(paddr,data,family_name = FAMILY_NAME_CUSTOMER)
+        return result
+    
+    def view_pending_lists(self,user_data):
+         paddr = _hash('pending_bank'.encode('utf-8'))[0:35] + _hash(user_data['user_data']['bank_name'].encode('utf-8'))[0:35]
+         res = requests.get(url = self._base_url+"/state/{}".format(paddr))
+         print(res.status_code)
+         if res.status_code ==404:
+             return "No Data"
+         else:
+            response = (base64.b64decode(yaml.safe_load(res.text)["data"]))
+            return json.loads(response.decode('utf-8'))
+    def view_customer_pending_banks(self,user_data):
+        paddr = _hash('pending_customer'.encode('utf-8'))[0:35] + _hash(user_data['kyc_number'].encode('utf-8'))[0:35]
+        print(paddr)
+        res = requests.get(url = self._base_url+"/state/{}".format(paddr))
+        print(res.status_code)
+        if res.status_code ==404:
+            return "No Data"
+        else:
+            response = (base64.b64decode(yaml.safe_load(res.text)["data"]))
+            return json.loads(response.decode('utf-8'))
+
+
+    
+    def verify_kyc_details(self,data):
+        kyc_number = data['kyc_number']
+        bank_name = data['user_data']['bank_name']
+        status = data['status']
+        paddr = _hash('kyc_customer'.encode('utf-8'))[0:35] + _hash(kyc_number.encode('utf-8'))[0:35] 
+        res = requests.get(url = self._base_url+"/state/{}".format(paddr))
+        response = json.loads((base64.b64decode(yaml.safe_load(res.text)["data"])).decode('utf-8'))
+        print(response)
+        if bank_name in response[kyc_number]["allowed_banks"]:
+            # update customer kyc status 
+             kyc_data = response
+             kyc_data[kyc_number]['status'] = status
+             kyc_data['action'] = 'update kyc details'
+             paddr = _hash('kyc_customer'.encode('utf-8'))[0:35] + _hash(kyc_number.encode('utf-8'))[0:35] 
+             result = self._wrap_and_send(paddr,kyc_data,family_name = FAMILY_NAME_CUSTOMER)
+             print('000')
+             print(result,json.loads(result))
+            #  result = json.loads((base64.b64decode(yaml.safe_load(result)["data"])).decode('utf-8'))
+            #  remove from pending lists
+             self.update_pending_lists_bank(bank_name,kyc_number,action='pop')
+        else:
+            result = 'not Allowed'
+        print(result)
+        return result
+    
+    def request_kyc_details(self,data):
+        bank_name = data['user_data']['bank_name'] 
+        kyc_number= data['kyc_number']
+        # push to pending requests in customer Tx Family
+        result = self.update_pending_requests_customer(bank_name,kyc_number)
+        return result
+
+
+
+    def accept_kyc_request(self,data):
+        bank_name = data['user_data']['bank_name'] 
+        kyc_number= data['kyc_number']
+        paddr = _hash('kyc_customer'.encode('utf-8'))[0:35] + _hash(kyc_number.encode('utf-8'))[0:35] 
+        res = requests.get(url = self._base_url+"/state/{}".format(paddr))
+        response = json.loads((base64.b64decode(yaml.safe_load(res.text)["data"])).decode('utf-8'))
+        # add banks to allowed banks
+        response[kyc_number]['allowed_banks'].append(bank_name)
+        paddr = _hash('kyc_customer'.encode('utf-8'))[0:35] + _hash(kyc_number.encode('utf-8'))[0:35] 
+        result = self._wrap_and_send(paddr,response,family_name = FAMILY_NAME_CUSTOMER)
+        # remove bank from pending requests
+        result = self.update_pending_requests_customer(bank_name,kyc_number,action='pop')
+        return response
+    
+    def reject_kyc_request(self,data):
+        bank_name = data['user_data']['bank_name'] 
+        kyc_number= data['kyc_number']
+        # remove bank from pending requests
+        result = self.update_pending_requests_customer(bank_name,kyc_number,action='pop')
+        return response
+
+    
+    def view_kyc_details(self,data):
+        paddr = _hash('kyc_customer'.encode('utf-8'))[0:35] + _hash(data['kyc_number'].encode('utf-8'))[0:35] 
+        res = requests.get(url = self._base_url+"/state/{}".format(paddr))
+        response = json.loads((base64.b64decode(yaml.safe_load(res.text)["data"])).decode('utf-8'))
+        bank_name = data['user_data']['bank_name']
+        kyc_number = data['kyc_number']
+        if data['user_data']['user_type'] == 'customer' or (data['user_data']['user_type'] == 'bank' and bank_name in response[kyc_number]['allowed_banks']):
+            return response
+        else:
+            return "Not Allowed to view"
+
+
+
+
+    
+
+
+
+
+
+
+
+    def login_user(self,identifier,password,user_type):
+        '''
+        displays info of the user
+        '''
+        print(user_type)
+        print(eval('FAMILY_NAME_'+user_type))
+        paddr=create_address(mode=password,name=identifier,private_key=self._private_key,family_name = eval('FAMILY_NAME_'+user_type))
+        print(paddr)
+        res,result_status = self._send_to_rest_api("state/{}".format(paddr)) 
+        try:
+            ans= base64.b64decode(yaml.safe_load(res)["data"])
+            return ans
+        except BaseException:
+            return "Invalid User"
+        
 
     def create_user(self,info,password):
         '''
@@ -60,10 +248,14 @@ class KycClient(object):
         '''
         print('inside add tx.py')
         print('address')
-        paddr=create_address(mode=password,name=info['name'],private_key=self._private_key,family_name = FAMILY_NAME_USER)
+        operation = {'add bank':{'family':FAMILY_NAME_BANK,'name':'name'},'add customer':{'family':FAMILY_NAME_CUSTOMER,'name':'mobile_number'}}
         info['action'] ='add bank' if info['user_type'] =='BANK' else 'add employee' if  info['user_type'] =='BANK EMPLOYEE' else 'add customer'
-        result = self._wrap_and_send(paddr,info,family_name = FAMILY_NAME_USER)
-
+        paddr=create_address(mode=password,name=info[operation[info['action']]['name']],private_key=self._private_key,family_name = operation[info['action']]['family'])
+        print(info)
+        result = self._wrap_and_send(paddr,info,family_name = operation[info['action']]['family'])
+        print(result)
+        result = json.loads(result)
+        return result['data'][0]['status']
 	
     def _send_to_rest_api(self, suffix, data=None, content_type=None):
         '''

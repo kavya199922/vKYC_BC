@@ -29,3 +29,63 @@
     
     
 }
+
+
+
+// //// UPDATED
+
+
+////// BANK
+{
+    "name":"",
+    "password":"",
+                
+    "user_type":"BANK",
+    
+}
+
+{
+    "my_requests":"NA/[{}]",   
+    //gets populated after kyc is submitted - linked with assignedTo
+    "pending_verifications":["kyc_num1","kyc_num2"]
+
+}
+
+//// BANK EMPLOYEE
+{
+    "email_id":"",
+    "bank":"",
+    "password":"",
+    "my_approvals":"NA/[{}]", //  approvals populated with kyc details after bank assigns to this employee
+//and after approving status & comments change in the kyc details of customer
+    "user_type":"BANK EMPLOYEE"
+}
+
+//// CUSTOMER - NEW CUSTOMER,KYC_ADD->KYC_NUMBER:KYC_DETAILS
+{
+    "mobile_number":"",
+    "password":"",
+    "kyc_number":"NA/987454763",
+    "my_approvals":"NA/[{}]",
+    "user_type":"CUSTOMER"
+
+}
+//// address kyc_number,FAMILY_NAME_CUSTOMER
+{       "kyc_data":{
+    "created_date":"2022-01-25 17:48:26.286210",
+    "updated_date":"2022-01-25 17:48:26.286210",
+    "expiry_date":"2022-07-24 17:48:26.286210",
+    "docs":[{"name":"aadhar","value":"s3://bucket/folder/file"}],
+    "status":"NA",
+    "comments":"NA",
+    "assigned_to":"HDFC"
+},
+    "user_data":{
+    "private_key":"640584306346bcf77782c7afc69165df369eaed441b46a432b943183c45a0399",
+    "mobile_number":"7338908957",
+    "password":"kkk",
+    "kyc_number":"NA",
+    "user_type":"CUSTOMER"
+    }
+
+}

@@ -1,0 +1,124 @@
+-------------------------------------------------------------------------------------
+API 10.168.126.150:9090/signup
+//sample request
+ customer
+ {
+     "mobile_number":"7338908957",
+     "password":"kkk",
+     "kyc_number":"NA",
+     "user_type":"CUSTOMER"
+
+ }
+ //sample response
+ {
+    "private_key": "aa6bba1fe114d11516c57395230be16e1e672bb270bcd5b763742c3336d0f7a1",
+    "result_status": "COMMITTED"
+}
+
+
+
+BANK 
+{
+    "name":"HDFC",
+    "email":"dhruv@hdfc"
+    "password":"kkk",
+    "user_type":"BANK"
+}
+//sample response
+{
+    "private_key": "37a890f44ac397ab37c9e6f182ba887ec29fb050ecebb95d24a5753aa51ec532",
+    "result_status": "COMMITTED"
+}
+
+-------------------------------------------------------------------------------------
+API     10.168.126.150:9090/login
+
+//sample requests
+{
+      "identifier":"HDFC",
+      "password":"hdfc_123",
+      "private_key":"2305bc7254e2b64d0f45571a1f0859c71b352bb905e59a5d9c934b6a1844bf48",
+      "user_type":"BANK"
+}
+
+//sample response(SAME as signup api request except private_key and password)
+{
+    "data": {
+        "action": "add bank",
+        "name": "HDFC",
+        "user_type": "BANK"
+    }
+}
+
+10.168.126.150:9090/add_kyc
+// ADD KYC - ACTION BY CUSTOMER;assignedTO:redirected BANK,private_key:private_key of customer,mobile_number of customer
+//sample requesat 
+{       "kyc_data":{
+        "created_date":"2022-01-25 17:48:26.286210",
+        "updated_date":"2022-01-25 17:48:26.286210",
+        "expiry_date":"2022-07-24 17:48:26.286210",
+        "docs":[{"name":"aadhar","value":"s3://bucket/folder/file"}],
+        "status":"NA",
+        "comments":"NA",
+        "assigned_to":"HDFC",
+        "allowed_banks":[],
+},
+        "user_data":{
+        "private_key":"aa6bba1fe114d11516c57395230be16e1e672bb270bcd5b763742c3336d0f7a1",
+        "mobile_number":"9445411598",
+        "password":"kkk",
+        "kyc_number":"NA",
+        "user_type":"CUSTOMER"
+        }
+
+}
+
+//sample response ( contains kyc number generated from hashing mobile number of customer)
+{
+    "data": {
+        "617825154e": {
+            "assignedTO": "HDFC",
+            "comments": "NA",
+            "created_date": "2022-01-25 17:48:26.286210",
+            "docs": [
+                {
+                    "name": "aadhar",
+                    "value": "s3://bucket/folder/file"
+                }
+            ],
+            "expiry_date": "2022-07-24 17:48:26.286210",
+            "mobile_number": "7338908957",
+            "private_key": "640584306346bcf77782c7afc69165df369eaed441b46a432b943183c45a0399",
+            "status": "SUBMITTED",
+            "updated_date": "2022-01-25 17:48:26.286210",
+            "allowed_banks":[]
+        },
+        "action": "add new kyc"
+    },
+    "result_status": "COMMITTED"
+}
+
+
+
+/sign_up - customer,bank
+/login
+/add_kyc - customer ->add to pending list of the bank (assignedTo)
+/verify_kyc - bank->updates kyc status
+/request kyc ->another bank enters kyc number and requests
+customer: /accept : update allowed banks /reject
+bank : /view_kyc : check allowed banks list and respond
+
+
+customer : 7358605097
+private_key : 3fe90c78d7f1b3a82c17da2507efba2a0fe8550ec76c70c86c30d702843cee56
+password : zzz
+
+bank : HDFC
+private_key : d94ca79574ab0aa8af250ca308fa0da2ec5ffa02e5c95b940da5d4d7766d5931
+password : kkk
+
+bank : ICICI
+private_key : fd6d047ff991ca8e5e15a98c151c89cd488a51f13f617f952eb4d40390914d76
+password : kkk
+
+kyc_number : 

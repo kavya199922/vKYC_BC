@@ -92,7 +92,7 @@ ENV PATH "$PATH:/project/app/client"
 EXPOSE 9090
 
 # CMD unset PYTHONPATH && python3 setup.py clean --all && python3 setup.py build
-# CMD python3 client.py
+CMD bash -c 'python3 client.py'
 
 
 
