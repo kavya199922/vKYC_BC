@@ -3,11 +3,15 @@ import boto3
 from mtcnn.mtcnn import MTCNN
 from numpy import asarray
 import cv2
+
 class Rekognition:
     def __init__(self,access_key,secret_key,region):
         self.access_key = access_key
         self.secret_key = secret_key
         self.region = region
+        print(self.access_key,self.secret_key,self.region)
+        if self.access_key is None or self.secret_key is None or self.region is None:
+            raise Exception("Please provide access_key, secret_key and region")
         self.client = boto3.client('rekognition', region_name=self.region, aws_access_key_id=self.access_key, aws_secret_access_key=self.secret_key)
 
     def compare_faces(self,source_image,target_image,similarity_threshold):
