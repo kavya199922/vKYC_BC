@@ -208,7 +208,7 @@ class KycClient(object):
         paddr = _hash('kyc_customer'.encode('utf-8'))[0:35] + _hash(data['kyc_number'].encode('utf-8'))[0:35] 
         res = requests.get(url = self._base_url+"/state/{}".format(paddr))
         response = json.loads((base64.b64decode(yaml.safe_load(res.text)["data"])).decode('utf-8'))
-        bank_name = data['user_data']['bank_name']
+        bank_name = data['user_data']['bank_name'] if 'bank_name' in data['user_data'] else ''
         kyc_number = data['kyc_number']
         if data['user_data']['user_type'] == 'customer' or (data['user_data']['user_type'] == 'bank' and bank_name in response[kyc_number]['allowed_banks']):
             return response
@@ -231,15 +231,21 @@ class KycClient(object):
         displays info of the user
         '''
         print(user_type)
-        print(eval('FAMILY_NAME_'+user_type))
+        user_type = user_type.upper()
+        print(eval('FAMILY_NAME_'+user_type.upper()))
         paddr=create_address(mode=password,name=identifier,private_key=self._private_key,family_name = eval('FAMILY_NAME_'+user_type))
         print(paddr)
-        res,result_status = self._send_to_rest_api("state/{}".format(paddr)) 
-        try:
-            ans= base64.b64decode(yaml.safe_load(res)["data"])
+        res = requests.get(url = self._base_url+"/state/{}".format(paddr))
+        print(res.status_code,type(res.status_code))
+        if res.status_code == 404:
+             ans ={}
+             ans['status'] = 'login failed'
+             return ans 
+        else:
+            ans= base64.b64decode(yaml.safe_load(res.text)["data"])
+            ans = json.loads(ans.decode('utf-8'))
+            ans['status'] = 'login success'
             return ans
-        except BaseException:
-            return "Invalid User"
         
 
     def create_user(self,info,password):

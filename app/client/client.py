@@ -22,7 +22,7 @@ def login():
     info = request.get_json(force=True)
     client = KycClient(key=info['private_key'])
     resp = client.login_user(info['identifier'],info['password'],info['user_type'])
-    return jsonify(data=json.loads(resp.decode('utf-8')))
+    return jsonify(data=resp)
 @app.route('/add_kyc',methods= ['GET','POST'])
 def add_kyc():
     kyc_details = request.get_json(force=True)
