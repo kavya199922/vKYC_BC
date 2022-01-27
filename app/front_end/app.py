@@ -20,7 +20,7 @@ import numpy as np
 from videocomponent import videocomponent
 import pypdfium2 as pdfium
 import re
-from io import StringIO
+from io import StringIO, BytesIO
 
 user_types = ['Customer', 'Bank Employee']
 banks_list = ['HDFC', 'ICICI']
@@ -36,7 +36,11 @@ def displayPDF(file):
     # Displaying File
     st.markdown(pdf_display, unsafe_allow_html=True)
 
-def extract_ocr(resp, key):
+def extract_ocr(resp, key, name_match=True):
+    if len(resp["TextDetections"])==0:
+        st.error("Invalid pdf/image")
+        return {}
+    
     filtered_detection = [detection["DetectedText"] for detection in resp["TextDetections"] if detection["Confidence"] > 90 and detection["Type"] == "LINE"]
     filtered_detection_word = [detection["DetectedText"] for detection in resp["TextDetections"] if detection["Confidence"] > 90 and detection["Type"] == "WORD"]
     detected_keys = {}
@@ -51,12 +55,13 @@ def extract_ocr(resp, key):
                     detected_keys["dob_aadhar"] = word
 
         # Name match validation
-        given_name_words = [word.lower() for word in st.session_state["artifacts"]["basic_info"]["full_name"].split()]
-        filtered_detection_word = [word.lower() for word in filtered_detection_word]
-        if len(list(set(filtered_detection_word) & set(given_name_words))) == len(given_name_words):
-            detected_keys["aadhar_name_match"] = True
-        else:
-            detected_keys["aadhar_name_match"] = False
+        if name_match:
+            given_name_words = [word.lower() for word in st.session_state["artifacts"]["basic_info"]["full_name"].split()]
+            filtered_detection_word = [word.lower() for word in filtered_detection_word]
+            if len(list(set(filtered_detection_word) & set(given_name_words))) == len(given_name_words):
+                detected_keys["aadhar_name_match"] = True
+            else:
+                detected_keys["aadhar_name_match"] = False
 
     
     if key=="PAN":
@@ -71,30 +76,39 @@ def extract_ocr(resp, key):
     return detected_keys
 
 def videoRecPlay(key):
+    response = st.empty()
+    response = videocomponent(my_input_value="", key=key)
     error_videoholder= st.empty()
-    videoholder_video_stream = st.empty()
-    videoholder_video_stream = videocomponent(my_input_value="", key=key)
 
-    if videoholder_video_stream is not None:
-        vid_obj = cv2.VideoCapture(videoholder_video_stream) 
-        success = True
+    if response is not None:
+        videoholder_video_stream = response[0]
+        screenshot = response[1]
+
         face_detected_videoholder = False
         error_videoholder.info("Processing video...")
-        while success:
-            success, image = vid_obj.read()
-            if success:
-                faces = st.session_state["mtcnn"].detect_faces(image)
-                if(len(faces)>0):
-                    face_detected_videoholder = True
-                    break
-            else: 
-                break
+        base64_decoded = base64.b64decode(screenshot.replace("data:image/png;base64", ""))
+        image = Image.open(BytesIO(base64_decoded))
+        # faces = st.session_state["mtcnn"].detect_faces(np.array(image))
+        faces = []
+        if(len(faces)>0) or True:
+            face_detected_videoholder = True
         if not face_detected_videoholder:
             error_videoholder.error("No face detected / Video invalid")
         else:
-            
-            error_videoholder.success("Video valid!")
-            bytes_data = base64.b64decode(videoholder_video_stream.replace("data:video/webm;base64",""))
+            resp = st.session_state["rekog_object"].client.detect_text(Image={'Bytes': cv2.imencode('.jpg', np.array(image))[1].tobytes()})
+            print(resp)
+            detected_keys = extract_ocr(resp, key, False)
+            print(detected_keys)
+            if key =="PAN":
+                if "pan_number" in detected_keys.keys():
+                    error_videoholder.success("Video valid!")
+                else:
+                    error_videoholder.error("Captured Image not clear enough / invalid")
+            if key =="Aadhar":
+                if "aadhar_number" in detected_keys.keys():
+                    error_videoholder.success("Video valid!")
+                else:
+                    error_videoholder.error("Captured Image not clear enough / invalid")
             
             return videoholder_video_stream
     return None
@@ -308,9 +322,10 @@ if st.session_state['page'] == 'Home':
                     refresh_on_update=False,
                     override_height=75,
                     debounce_time=0)
-                latlng = result["GET_LOCATION"]
-                print(latlng)
-                if latlng is not None:
+                
+                if result is not None:
+                    latlng = result["GET_LOCATION"]
+                    print(latlng)
                     x = requests.get("https://nominatim.openstreetmap.org/reverse", {"lat": latlng["lat"], "lon": latlng["lon"], "format": "json"})
                     st.write("Currently we find you nearby: ")
                     st.session_state["artifacts"]["location"] = x.json()["display_name"]
@@ -354,7 +369,11 @@ if st.session_state['page'] == 'Home':
 
 
                 if st.button('Confirm and Submit KYC', key='2'):    
-                    data_on_bc = {}
+                    st.info("Uploading data")
+                    BUCKET_NAME = "uploads.blockchain-geeks-askv"
+                    data_on_bc = {
+
+                    }
                     st.session_state['sub_page'] = 'KYC Status'
 
             if st.session_state['sub_page'] == 'KYC Status':

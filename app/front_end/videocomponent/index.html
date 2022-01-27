@@ -26,7 +26,7 @@
         autoplay
         muted
         id="web-cam-container"
-        style="background-color: grey; width: 100%; height: 80%"
+        style="background-color: grey; width: 100%; height: 77%"
       >
         Your browser doesn't support the video tag
       </video>
@@ -40,6 +40,15 @@
       Start video recording
     </button>
 
+    <button
+      type="button"
+      style="display: none"
+      id="capture-recording"
+      onclick="captureRecording()"
+    >
+      Capture frame
+    </button>
+    
     <!-- This button will stop the video recording -->
     <button
       type="button"
@@ -50,6 +59,7 @@
     >
       Stop video recording
     </button>
+
     <script>
       function sendMessageToStreamlitClient(type, data) {
         var outData = Object.assign(
@@ -83,13 +93,14 @@
       init();
       window.addEventListener("load", function () {
         window.setTimeout(function () {
-          setFrameHeight(480);
+          setFrameHeight(540);
         }, 0);
       });
 
       const webCamContainer = document.getElementById("web-cam-container");
       var blobs_recorded = [];
       var mediaRecorder;
+      var screenshot="";
 
       const camera_button = document.getElementById("start-vid-recording");
       camera_button.addEventListener("click", async function () {
@@ -127,12 +138,13 @@
               .forEach((track) => track.stop()); // stop each of them
 
             sendDataToPython({
-              value: base64data,
+              value: [base64data, screenshot],
               dataType: "json",
             });
           };
         });
-        document.getElementById("stop-vid-recording").style.display = "block";
+        document.getElementById("capture-recording").style.display = "block";
+        document.getElementById("stop-vid-recording").style.display = "none";
         document.getElementById("start-vid-recording").style.display = "none";
         media_recorder.start();
       });
@@ -141,12 +153,33 @@
         media_recorder.stop();
         document.getElementById("vid-record-status").innerHTML = "<br/>";
         document.getElementById("stop-vid-recording").style.display = "none";
+        document.getElementById("capture-recording").style.display = "none";
         document.getElementById("start-vid-recording").style.display = "block";
 
         // document.getElementsByTagName("body")[0].style.display = "none";
         // sendMessageToStreamlitClient("streamlit:setFrameHeight", {
         //   height: 0,
         // });
+      }
+      
+
+      function captureRecording() {
+        document.getElementById("capture-recording").style.display = "none";
+        document.getElementById("stop-vid-recording").style.display = "block";
+
+        navigator.mediaDevices
+          .getUserMedia({ video: true })
+          .then((mediaStream) => {
+            const track = mediaStream.getVideoTracks()[0];
+            let imageCapture = new ImageCapture(track);
+            imageCapture.takePhoto().then((blob) => {
+                var reader_2 = new FileReader();
+              reader_2.readAsDataURL(blob);
+              reader_2.onloadend =  () => {
+                screenshot = reader_2.result;
+              };
+            });
+          });
       }
     </script>
   </body>

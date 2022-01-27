@@ -25,5 +25,8 @@ default_initial_vars = {
     "rekog_object": rekognition.Rekognition(
             access_key=dotenv_values(".env").get('access_key_id'), 
             secret_key=dotenv_values(".env").get('secret_key_id'), 
+            region=dotenv_values(".env").get('region')),
+    "s3_object": rekognition.S3( access_key=dotenv_values(".env").get('access_key_id'), 
+            secret_key=dotenv_values(".env").get('secret_key_id'), 
             region=dotenv_values(".env").get('region'))
     }
