@@ -16,6 +16,7 @@ import numpy as np
 from videocomponent import videocomponent
 import pypdfium2 as pdfium
 import re
+from io import StringIO
 
 user_types = ['Customer', 'Bank Employee']
 banks_list = ['HDFC', 'ICICI']
@@ -182,7 +183,7 @@ if st.session_state['page'] == 'Home':
                 Aadhar_file = st.file_uploader(
                     "Upload Aadhar as PDF", type=['pdf'], key='Aadhar')
                 if Aadhar_file is not None:
-                    st.session_state["artifacts"]["aadhar_pdf"] = Aadhar_file.getvalue()
+                    st.session_state["artifacts"]["aadhar_pdf"] = Aadhar_file
                     with pdfium.PdfContext(Aadhar_file.getvalue()) as pdf:
                         pil_image = pdfium.render_page(
                             pdf,
@@ -207,7 +208,7 @@ if st.session_state['page'] == 'Home':
                 PAN_file = st.file_uploader(
                         "Upload PAN as PDF", type=['pdf'], key='PAN')
                 if PAN_file is not None:
-                    st.session_state["artifacts"]["pan_pdf"] = PAN_file.getvalue()
+                    st.session_state["artifacts"]["pan_pdf"] = PAN_file
                     with pdfium.PdfContext(PAN_file.getvalue()) as pdf:
                         pil_image = pdfium.render_page(
                             pdf,
@@ -278,21 +279,21 @@ if st.session_state['page'] == 'Home':
                 st.write(st.session_state['artifacts']["verifier_bank"])
 
                 st.subheader("Aadhar card PDF")
-                base64_pdf = base64.b64encode(st.session_state["artifacts"]["aadhar_pdf"])
+                base64_pdf =  base64.b64encode(st.session_state["artifacts"]["aadhar_pdf"].read()).decode('utf-8')
                 pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
                 st.markdown(pdf_display, unsafe_allow_html=True)
 
                 st.subheader("PAN card PDF")
-                base64_pdf = base64.b64encode(st.session_state["artifacts"]["pan_pdf"])
+                base64_pdf = base64.b64encode(st.session_state["artifacts"]["pan_pdf"].read()).decode('utf-8')
                 pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
                 st.markdown(pdf_display, unsafe_allow_html=True)
                 
                 st.subheader("Selfie")
                 st.image(st.session_state["artifacts"]["selfie"])
                 st.subheader("Aadhar Video")
-                st.video(st.session_state["artifacts"]["aadhar_video"])
+                st.video(base64.b64decode(st.session_state["artifacts"]["aadhar_video"].replace("data:video/webm;base64","")))
                 st.subheader("PAN Video")
-                st.video(st.session_state["artifacts"]["pan_video"])
+                st.video(base64.b64decode(st.session_state["artifacts"]["pan_video"].replace("data:video/webm;base64","")))
                 st.subheader("AI Summary")
                 st.write(st.session_state["artifacts"]["AI_Detection"])
                 st.write("\n")
