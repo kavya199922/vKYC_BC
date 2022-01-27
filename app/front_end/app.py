@@ -113,7 +113,8 @@ if st.sidebar.button("Sign In"):
     st.session_state['page'] = 'Sign In'
 
 if st.sidebar.button("Sign Up"):
-    st.session_state['page'] = 'Sign Up'   
+    st.session_state['page'] = 'Sign Up'
+    st.session_state['otp_sent'] = False
 
 if st.sidebar.button("Home"):
     st.session_state['page'] = 'Home'
@@ -122,8 +123,9 @@ if st.sidebar.button("Home"):
             st.session_state['sub_page'] = 'Choose Bank'
         if st.session_state['artifacts']['user_type'] == 'BANK' :
             st.session_state['sub_page'] = 'List View'
+            st.session_state['current_customer'] = 'NA'
 
-if st.sidebar.button("KYC Access Requests"):
+if st.sidebar.button("KYC Access"):
     st.session_state['page'] = 'Requests'
 
 if st.sidebar.button("Logout"):
@@ -155,8 +157,8 @@ if st.session_state['page'] == 'Sign Up':
             if st.button("Sign Up", key='1'):
                 resp = requests.post(REST_API+'/signup',json = {"mobile_number":mobile_num,"password":password,"kyc_number":"NA","user_type":"CUSTOMER"})
                 private_key = resp.json()['private_key']
-                st.info('Your private key is ' + private_key + \
-                        '. Note down and use while logging in.')
+                st.info('Your private key is **' + private_key + \
+                        '** Note down and use while logging in.')
 
 
     if user_type == 'Bank Employee':
@@ -178,63 +180,66 @@ if st.session_state['page'] == 'Sign Up':
             if st.button("Sign Up", key='2'):
                 resp = requests.post(REST_API+'/signup',json = {"identifier":emp_email_id,"password":password,"bank_name":bank_name,"user_type":st.session_state['artifacts']['user_type']})
                 private_key = resp.json()['private_key']
-                st.info('Your private key is ' + private_key + \
-                        '. Note down and use while logging in.')
+                st.info('Your private key is **' + private_key + \
+                        '** Note down and use while logging in.')
 
 
 if st.session_state['page'] == 'Sign In':
+    if not st.session_state['signed_in'] :
+        user_type = st.selectbox('User Type', user_types)
+        st.session_state['artifacts']['user_type'] = user_type
 
-    user_type = st.selectbox('User Type', user_types)
-    st.session_state['artifacts']['user_type'] = user_type
+        if user_type == 'Customer':
+            st.title("KYC Customer Sign In")
 
-    if user_type == 'Customer':
-        st.title("KYC Customer Sign In")
+            mobile_num = st.text_input("Mobile Number")
+            password = st.text_input("Password", type='password')
+            private_key = st.text_input("Private Key")
 
-        mobile_num = st.text_input("Mobile Number")
-        password = st.text_input("Password", type='password')
-        private_key = st.text_input("Private Key")
+            if st.button("Sign In", key='1'):
+                resp = requests.post(REST_API+'/login',json ={"identifier":mobile_num,"password":password,"private_key":private_key,"user_type":st.session_state['user_type']})
+                # st.write(resp.json()['data']['status'])
+                if resp.json()['data']['status'] == 'login success':
+                    st.session_state['artifacts']['private_key'] = private_key
+                    st.session_state['artifacts']['mobile_num'] = mobile_num
+                    st.session_state['artifacts']['password'] = password
+                    st.session_state['artifacts']['kyc_number'] = resp.json()['data']['kyc_number']
+                    st.success("Signed in successfully. Go to \"Home\"")
+                    st.session_state['signed_in'] = True
+                else:
+                    st.error("Invalid User")
+                    st.session_state['signed_in'] = False
 
-        if st.button("Sign In", key='1'):
-            resp = requests.post(REST_API+'/login',json ={"identifier":mobile_num,"password":password,"private_key":private_key,"user_type":st.session_state['user_type']})
-            st.write(resp.json()['data']['status'])
-            if resp.json()['data']['status'] == 'login success':
-                st.session_state['artifacts']['private_key'] = private_key
-                st.session_state['artifacts']['mobile_num'] = mobile_num
-                st.session_state['artifacts']['password'] = password
-                st.session_state['artifacts']['kyc_number'] = resp.json()['data']['kyc_number']
-                st.success("Signed In successfully")
-                st.session_state['signed_in'] = True
-            else:
-                st.error("Invalid User")
-                st.session_state['signed_in'] = False
 
+            
 
         
 
-       
+        if user_type == 'Bank Employee':
+            st.title("KYC Employee Sign In")
+            st.session_state['artifacts']['user_type'] = 'BANK'
+            bank_name = st.selectbox('Bank', banks_list)
+            email_id = st.text_input("Email ID")
+            password = st.text_input("Password", type='password')
+            private_key = st.text_input("Private Key")
 
-    if user_type == 'Bank Employee':
-        st.title("KYC Employee Sign In")
-        st.session_state['artifacts']['user_type'] = 'BANK'
-        bank_name = st.text_input('Bank Name')
-        email_id = st.text_input("Email ID")
-        password = st.text_input("Password", type='password')
-        private_key = st.text_input("Private Key")
-
-        if st.button("Sign In", key='2'):
-            resp = requests.post(REST_API+'/login',json ={"identifier":email_id,"password":password,"private_key":private_key,"user_type":st.session_state['artifacts']['user_type']})
-            st.write(resp.json()['data']['status'])
-            if resp.json()['data']['status'] == 'login success':
-                st.session_state['artifacts']['private_key'] = private_key
-                st.session_state['artifacts']['email_id'] = email_id
-                st.session_state['artifacts']['bank_name'] = bank_name
-                st.session_state['artifacts']['password'] = password
+            if st.button("Sign In", key='2'):
+                resp = requests.post(REST_API+'/login',json ={"identifier":email_id,"password":password,"private_key":private_key,"user_type":st.session_state['artifacts']['user_type']})
+                # st.write(resp.json()['data']['status'])
                 if resp.json()['data']['status'] == 'login success':
-                    st.success("Signed In successfully")
-                    st.session_state['signed_in'] = True
-                else:
-                    st.error('invalid login')
-                    st.session_state['signed_in']=False
+                    st.session_state['artifacts']['private_key'] = private_key
+                    st.session_state['artifacts']['email_id'] = email_id
+                    st.session_state['artifacts']['bank_name'] = bank_name
+                    st.session_state['artifacts']['password'] = password
+                    if resp.json()['data']['status'] == 'login success':
+                        st.success("Signed in successfully. Go to \"Home\"")
+                        st.session_state['signed_in'] = True
+                    else:
+                        st.error('invalid login')
+                        st.session_state['signed_in']=False
+
+    else :
+        st.error("You are already Signed in.\n Please Logout to sign in with different account.")
 
 if st.session_state['page'] == 'Home':
 
@@ -243,9 +248,10 @@ if st.session_state['page'] == 'Home':
                 # check if kyc number is NA or done
             resp = requests.post(REST_API+'/login',json ={"identifier":st.session_state['artifacts']['mobile_num'],"password":st.session_state['artifacts']['password'],"private_key":st.session_state['artifacts']['private_key'],"user_type":st.session_state['artifacts']['user_type']})
             st.session_state['artifacts']['kyc_number'] = resp.json()['data']['kyc_number']
-            st.write(st.session_state['artifacts']['kyc_number'])
-            st.title("KYC Customer")
+            # st.write(st.session_state['artifacts']['kyc_number'])
+            st.title("KYC Application")
             if st.session_state['artifacts']['kyc_number'] == 'NA':
+                st.title('KYC Status: '+ 'Not Submitted')
                 
                 if st.session_state['sub_page'] == 'Choose Bank':
                     st.subheader("Step 1: Choose verifier bank")
@@ -382,13 +388,17 @@ if st.session_state['page'] == 'Home':
                     # st.subheader("PAN Video")
                     # st.video(st.session_state["artifacts"]["pan_video"])
                     st.subheader("AI Summary")
-                    st.write(st.session_state["artifacts"]["AI_Detection"])
+                    # st.write(st.session_state["artifacts"]["AI_Detection"])
+                    st.write("**Aadhar Number :** " + st.session_state["artifacts"]["AI_Detection"]["aadhar"])
+                    st.write("**PAN Number :** " + st.session_state["artifacts"]["AI_Detection"]["PAN"])
+                    st.write("**Face Similarity score :** " + st.session_state["artifacts"]["AI_Detection"]["similarity_score_face"])
+                    
                     st.write("\n")
 
 
                     if st.button('Confirm and Submit KYC', key='2'):
                         resp = requests.post(REST_API+'/add_kyc',json = {'kyc_data':{'created_date':str(datetime.datetime.now()),'updated_date':str(datetime.datetime.now()),'expiry_date':str(datetime.datetime.now() + datetime.timedelta(days=180)),'docs':[{'name':'PAN_file','value':'s3://pan_file'},{'name':'Aadhar_file','value':'s3://aadhar'}],'status':"NOT SUBMITTED",'assigned_to':st.session_state['artifacts']["verifier_bank"],'allowed_banks':[{"bank_name":st.session_state['artifacts']["verifier_bank"],"value":"dummy"}]},'user_data':{'private_key':st.session_state['artifacts']['private_key'],'mobile_number':st.session_state['artifacts']['mobile_num'],'password':st.session_state['artifacts']['password'],'user_type':'CUSTOMER','kyc_number':'NA'}})
-                        st.success('Here is Your KYC NUMBER ' + resp.json()['data']+' wait for verification')
+                        st.success('Here is Your KYC NUMBER **' + resp.json()['data']+'** wait for verification')
                         st.session_state['artifacts']['kyc_number']=resp.json()['data']
                         st.session_state['sub_page'] = 'KYC Status'
             else:
@@ -398,22 +408,91 @@ if st.session_state['page'] == 'Home':
             if st.session_state['sub_page'] == 'KYC Status':
                 # view kyc 
                 resp = requests.post(REST_API+'/view_kyc_details',json ={'kyc_number':st.session_state['artifacts']['kyc_number'],'user_data':{'user_type':'customer','private_key':st.session_state['artifacts']['private_key']}})
-                st.write(resp.json())
                 st.title('KYC Status: '+ resp.json()['data'][st.session_state['artifacts']['kyc_number']]['status'])
+                st.title("KYC Details")
+                kyc_details = resp.json()
+                temp_json = {
+                    "data": {
+                        "7299be154e": {
+                        "allowed_banks": [
+                            {
+                            "bank_name": "HDFC",
+                            "value": "dummy"
+                            }
+                        ],
+                        "assigned_to": "HDFC",
+                        "created_date": "2022-01-27 19:39:15.387102",
+                        "docs": [
+                            {
+                            "name": "PAN_file",
+                            "value": "s3://pan_file"
+                            },
+                            {
+                            "name": "Aadhar_file",
+                            "value": "s3://aadhar"
+                            }
+                        ],
+                        "expiry_date": "2022-07-26 19:39:15.387136",
+                        "status": "SUBMITTED",
+                        "updated_date": "2022-01-27 19:39:15.387129"
+                        },
+                        "action": "add new kyc"
+                    }
+                    }
+
+                st.subheader("KYC Number")
+                st.write(st.session_state['artifacts']['kyc_number'])
+
+                st.subheader("Verifier bank")
+                st.write(kyc_details["data"][st.session_state['artifacts']['kyc_number']]["assigned_to"])
+
+                st.subheader("Aadhar card PDF")
+                st.write(kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"][0]["value"])
+                #commented:
+                # base64_pdf = base64.b64encode(st.session_state["artifacts"]["aadhar_pdf"])
+                # pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
+                # st.markdown(pdf_display, unsafe_allow_html=True)
+
+                st.subheader("PAN card PDF")
+                st.write(kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"][0]["value"])
+                #commented:
+                # base64_pdf = base64.b64encode(st.session_state["artifacts"]["pan_pdf"])
+                # pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
+                # st.markdown(pdf_display, unsafe_allow_html=True)
+                
+                st.subheader("Selfie")
+                st.write(st.write(kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"][0]["value"]))
+                #commented:
+                # st.image(st.session_state["artifacts"]["selfie"])
+                # st.subheader("Aadhar Video")
+                # st.video(st.session_state["artifacts"]["aadhar_video"])
+                # st.subheader("PAN Video")
+                # st.video(st.session_state["artifacts"]["pan_video"])
+                st.subheader("Expiry Date")
+                st.write(kyc_details["data"][st.session_state['artifacts']['kyc_number']]["expiry_date"])
 
         # Employee
         if st.session_state['artifacts']['user_type'] == 'BANK':
-            st.title("KYC List")
+            st.title("KYC Applications Pending List")
             # if st.session_state['sub_page'] == 'List View' :
             if True :
                 # list all pending kyc 
                 # st.write({'user_data':{'bank_name':st.session_state['artifacts']['bank_name'],'private_key':st.session_state['artifacts']['private_key']}})
                 resp = requests.post(REST_API+'/view_pending_lists',json = {'user_data':{'bank_name':st.session_state['artifacts']['bank_name'],'private_key':st.session_state['artifacts']['private_key']}})
-                st.write(resp.json())
+                # st.write(resp.json())
+
                 pending_lists = []
                 if resp.json()['data']!='No Data':
                     pending_lists = resp.json()['data']['pending_list']
-                    st.write(pending_lists)
+                    colms = st.columns([1,1])
+                    fields = ['##### KYC Number', '##### Action']
+
+                    for col, field_name in zip(colms, fields):
+                        # header
+                        col.write(field_name)
+                    st.write("\n")
+                else :
+                    st.subheader("You don't have any pending KYC")
 
                 for kyc in pending_lists:
                     resp = None
@@ -422,22 +501,103 @@ if st.session_state['page'] == 'Home':
                         st.write(kyc)
                     with co2 :
                         if st.button('view',key=kyc):
-                            resp = requests.post(REST_API+'/view_kyc_details',json ={'kyc_number':st.session_state['artifacts']['kyc_number'],'user_data':{'user_type':'bank','private_key':st.session_state['artifacts']['private_key'],'bank_name':st.session_state['artifacts']['bank_name']}})
-                            st.write(resp.json())
-                            # consolidated data - s3 display
+                            st.session_state['current_customer'] = kyc
                             
+                            # consolidated data - s3 display
+
+                st.components.v1.html("""<hr style="height:2px;border:none;color:#333;background-color:#333;" /> """)
+
+                if st.session_state['current_customer'] != 'NA' :
+                    resp = requests.post(REST_API+'/view_kyc_details',json ={'kyc_number':st.session_state['current_customer'],'user_data':{'user_type':'bank','private_key':st.session_state['artifacts']['private_key'],'bank_name':st.session_state['artifacts']['bank_name']}})
+                    # st.write(resp.json())
+                    kyc_details = resp.json()
+                    temp_json = {
+                        "data": {
+                            "7299be154e": {
+                            "allowed_banks": [
+                                {
+                                "bank_name": "HDFC",
+                                "value": "dummy"
+                                }
+                            ],
+                            "assigned_to": "HDFC",
+                            "created_date": "2022-01-27 19:39:15.387102",
+                            "docs": [
+                                {
+                                "name": "PAN_file",
+                                "value": "s3://pan_file"
+                                },
+                                {
+                                "name": "Aadhar_file",
+                                "value": "s3://aadhar"
+                                }
+                            ],
+                            "expiry_date": "2022-07-26 19:39:15.387136",
+                            "status": "SUBMITTED",
+                            "updated_date": "2022-01-27 19:39:15.387129"
+                            },
+                            "action": "add new kyc"
+                        }
+                        }
+
+                    st.title("KYC Details")
+                    st.subheader("KYC Number")
+                    st.write(st.session_state['current_customer'])
+
+                    st.subheader("KYC Status")
+                    st.write(kyc_details["data"][st.session_state['current_customer']]["status"])
+
+                    st.subheader("Verifier bank")
+                    st.write(kyc_details["data"][st.session_state['current_customer']]["assigned_to"])
+
+                    st.subheader("Aadhar card PDF")
+                    st.write(kyc_details["data"][st.session_state['current_customer']]["docs"][0]["value"])
+                    #commented:
+                    # base64_pdf = base64.b64encode(st.session_state["artifacts"]["aadhar_pdf"])
+                    # pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
+                    # st.markdown(pdf_display, unsafe_allow_html=True)
+
+                    st.subheader("PAN card PDF")
+                    st.write(kyc_details["data"][st.session_state['current_customer']]["docs"][0]["value"])
+                    #commented:
+                    # base64_pdf = base64.b64encode(st.session_state["artifacts"]["pan_pdf"])
+                    # pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
+                    # st.markdown(pdf_display, unsafe_allow_html=True)
+                    
+                    st.subheader("Selfie")
+                    st.write(st.write(kyc_details["data"][st.session_state['current_customer']]["docs"][0]["value"]))
+                    #commented:
+                    # st.image(st.session_state["artifacts"]["selfie"])
+                    # st.subheader("Aadhar Video")
+                    # st.video(st.session_state["artifacts"]["aadhar_video"])
+                    # st.subheader("PAN Video")
+                    # st.video(st.session_state["artifacts"]["pan_video"])
+                    st.subheader("Expiry Date")
+                    st.write(kyc_details["data"][st.session_state['current_customer']]["expiry_date"])
+                        
+                    st.write("\n")
+                    st.write("\n")
                     co3,co4 = st.columns([1,1])
                     with co3:
-                        if st.button('Approve KYC',key='approve'+kyc):
-                            st.write('---')
-                            resp = requests.post(REST_API+'/verify_kyc',json={"kyc_number":kyc,"status":"VERIFIED BY "+st.session_state['artifacts']['bank_name'],"user_data":{"private_key":st.session_state['artifacts']['private_key'],"bank_name":st.session_state['artifacts']['bank_name']}})
-                            st.write(resp.json())
+                        if st.button('Approve KYC',key='approve'+st.session_state['current_customer']):
+                            resp = requests.post(REST_API+'/verify_kyc',json={"kyc_number":st.session_state['current_customer'],"status":"VERIFIED BY "+st.session_state['artifacts']['bank_name'],"user_data":{"private_key":st.session_state['artifacts']['private_key'],"bank_name":st.session_state['artifacts']['bank_name']}})
+                            # st.write(resp.json())
+                            # temp_json = {
+                            # "data": "{\n  \"data\": [\n    {\n      \"id\": \"4366549b348e145da68e5a6bee8f58acf756aec2e95a160bab86569611b9622325cb4a2363d5454406f8b0eb08b3a89a528d25c65e4cec6847277e0704fadb67\",\n      \"invalid_transactions\": [],\n      \"status\": \"COMMITTED\"\n    }\n  ],\n  \"link\": \"http://10.168.126.150:8008/batch_statuses?id=4366549b348e145da68e5a6bee8f58acf756aec2e95a160bab86569611b9622325cb4a2363d5454406f8b0eb08b3a89a528d25c65e4cec6847277e0704fadb67&wait=10\"\n}"
+                            # }
+                            st.write("Approved KYC "+st.session_state['current_customer'])
 
                     with co4:
-                        if st.button('Reject KYC',key='reject'+kyc):
-                            resp = requests.post(REST_API+'/verify_kyc',json={"kyc_number":kyc,"status":"REJECTED BY "+st.session_state['artifacts']['bank_name'],"user_data":{"private_key":st.session_state['artifacts']['private_key'],"bank_name":st.session_state['artifacts']['bank_name']}})
-                            st.write(resp.json())
-                    
+                        if st.button('Reject KYC',key='reject'+st.session_state['current_customer']):
+                            resp = requests.post(REST_API+'/verify_kyc',json={"kyc_number":st.session_state['current_customer'],"status":"REJECTED BY "+st.session_state['artifacts']['bank_name'],"user_data":{"private_key":st.session_state['artifacts']['private_key'],"bank_name":st.session_state['artifacts']['bank_name']}})
+                            # st.write(resp.json())
+                            # temp_json = {
+                            # "data": "{\n  \"data\": [\n    {\n      \"id\": \"7d0ce2708051581f27b73549677828cf84261b35304282bda04c85934b60141b5387c186ea4ae7f12419ca4e330d0c6150927300bb2a7fa2dba591292bf8c10d\",\n      \"invalid_transactions\": [],\n      \"status\": \"COMMITTED\"\n    }\n  ],\n  \"link\": \"http://10.168.126.150:8008/batch_statuses?id=7d0ce2708051581f27b73549677828cf84261b35304282bda04c85934b60141b5387c186ea4ae7f12419ca4e330d0c6150927300bb2a7fa2dba591292bf8c10d&wait=10\"\n}"
+                            # }
+                            st.write("Rejected KYC "+st.session_state['current_customer'])
+
+                    st.components.v1.html("""<hr style="height:2px;border:none;color:#333;background-color:#333;" /> """)
+                                            
 
 
 
@@ -476,7 +636,7 @@ if st.session_state['page'] == 'Home':
                 #                 "Name" : user_table['Name'][x]
                 #             }
 
-            st.components.v1.html("""<hr style="height:2px;border:none;color:#333;background-color:#333;" /> """)
+            
             #commented:            
             # if st.session_state['sub_page'] == 'Detailed View' :
             #     # if st.button('Back') :
@@ -518,11 +678,31 @@ if st.session_state['page'] == 'Requests':
         # st.write(st.session_state[''])
         # Customer
         if st.session_state['artifacts']['user_type'] == 'Customer':
-            st.title("KYC Access Requests")
+            st.title("KYC Access Requests from Banks")
             resp = requests.post(REST_API+'/view_pending_banks',json={'kyc_number':st.session_state['artifacts']['kyc_number'],"user_data":{"private_key":st.session_state['artifacts']['private_key']}})
-            st.write(resp.json())
+            # st.write(resp.json())
+            # temp_json = {
+            # "data": {
+            #     "action": "update pending bank",
+            #     "kyc_number": "7299be154e",
+            #     "pending_banks": [
+            #     "ICICI",
+            #     "ICICI"
+            #     ]
+            # }
+            # }
+            
             if resp.json()['data'] != 'No Data':
                 pending_banks = resp.json()['data']['pending_banks']
+                colms = st.columns([1,2,1])
+
+                fields = ['##### Bank', '##### Action 1', '##### Action 2']
+
+                for col, field_name in zip(colms, fields):
+                    # header
+                    col.write(field_name)
+                st.write("\n")
+
                 for bank in pending_banks:
                     co1,co2,co3 = st.columns([1,2,1])
                     with co1:
@@ -530,17 +710,22 @@ if st.session_state['page'] == 'Requests':
                     with co2:
                         if st.button('Approve',key=bank):
                             resp =requests.post(REST_API+'/accept_kyc_request',json={'kyc_number':st.session_state['artifacts']['kyc_number'],'user_data':{"bank_name":bank,"private_key":st.session_state['artifacts']['private_key']}})
-                            st.write(resp.json())
+                            # st.write(resp.json())
                             st.write("Approved")
                     with co3:
                         if st.button('Reject',key=bank):
                             resp =requests.post(REST_API+'/reject_kyc_request',json={'kyc_number':st.session_state['artifacts']['kyc_number'],'user_data':{"bank_name":bank,"private_key":st.session_state['artifacts']['private_key']}})
-                            st.write(resp.json())
-                            st.write("rejected")
-            st.write('Allowed banks')
+                            # st.write(resp.json())
+                            st.write("Rejected")
+            else :
+                st.subheader("You don't have any pending KYC Access requests from banks")
+
+            st.write("________________________________________________________________________\n")
+            st.subheader('Banks allowed to view your KYC')
             resp = requests.post(REST_API+'/view_kyc_details',json ={'kyc_number':st.session_state['artifacts']['kyc_number'],'user_data':{'user_type':'customer','private_key':st.session_state['artifacts']['private_key']}})
-            st.write(resp.json())
-            # st.write(resp.json()['data'][st.session_state['artifacts']['kyc_number']]['allowed_banks'])
+            # st.write(resp.json())
+            for bank in resp.json()['data'][st.session_state['artifacts']['kyc_number']]['allowed_banks'] :
+                st.write("##### - "+bank["bank_name"])
 
             # requests_table = pd.DataFrame({
             #     "Bank" : ["ICICI", "Kotak"],
@@ -573,15 +758,44 @@ if st.session_state['page'] == 'Requests':
 
         # Employee
         if st.session_state['artifacts']['user_type'] == 'BANK':
-            st.title("KYC Access Requests")
+            st.title("Access Customer KYC")
             # request to access kyc 
             kyc_number = st.text_input("Kyc Number")
             st.session_state['artifacts']['access_kyc'] = ''
             st.session_state['artifacts']['kyc_response'] =''
-            if st.button('View KYC',key=kyc_number):
+            if st.button('View KYC',key='view kyc'):
                 st.session_state['artifacts']['requested_kyc_number'] = kyc_number
                 resp = requests.post(REST_API+'/view_kyc_details',json ={'kyc_number':kyc_number,'user_data':{'user_type':'bank','private_key':st.session_state['artifacts']['private_key'],'bank_name':st.session_state['artifacts']['bank_name']}})
-                st.write(resp.json()) 
+                # st.write(resp.json())
+                kyc_details = resp.json()
+                temp_json = {
+                    "data": {
+                        "7299be154e": {
+                        "allowed_banks": [
+                            {
+                            "bank_name": "HDFC",
+                            "value": "dummy"
+                            }
+                        ],
+                        "assigned_to": "HDFC",
+                        "created_date": "2022-01-27 19:39:15.387102",
+                        "docs": [
+                            {
+                            "name": "PAN_file",
+                            "value": "s3://pan_file"
+                            },
+                            {
+                            "name": "Aadhar_file",
+                            "value": "s3://aadhar"
+                            }
+                        ],
+                        "expiry_date": "2022-07-26 19:39:15.387136",
+                        "status": "REJECTED BY HDFC",
+                        "updated_date": "2022-01-27 19:39:15.387129"
+                        },
+                        "action": "update kyc details"
+                    }
+                    } 
                 st.session_state['artifacts']['kyc_response'] = resp.json()  
                 if resp.json()['data'] == 'Not Allowed to view':
                     st.write('You don\'t have access to this KYC')
@@ -589,37 +803,74 @@ if st.session_state['page'] == 'Requests':
 
                 else:
                     st.session_state['artifacts']['access_kyc']= 'allowed'
+                    st.title("KYC Details")
+                    st.subheader("KYC Number")
+                    st.write(st.session_state['artifacts']['requested_kyc_number'])
+
+                    st.subheader("KYC Status")
+                    st.write(kyc_details["data"][st.session_state['artifacts']['requested_kyc_number']]["status"])
+
+                    st.subheader("Verifier bank")
+                    st.write(kyc_details["data"][st.session_state['artifacts']['requested_kyc_number']]["assigned_to"])
+
+                    st.subheader("Aadhar card PDF")
+                    st.write(kyc_details["data"][st.session_state['artifacts']['requested_kyc_number']]["docs"][0]["value"])
+                    #commented:
+                    # base64_pdf = base64.b64encode(st.session_state["artifacts"]["aadhar_pdf"])
+                    # pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
+                    # st.markdown(pdf_display, unsafe_allow_html=True)
+
+                    st.subheader("PAN card PDF")
+                    st.write(kyc_details["data"][st.session_state['artifacts']['requested_kyc_number']]["docs"][0]["value"])
+                    #commented:
+                    # base64_pdf = base64.b64encode(st.session_state["artifacts"]["pan_pdf"])
+                    # pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
+                    # st.markdown(pdf_display, unsafe_allow_html=True)
+                    
+                    st.subheader("Selfie")
+                    st.write(st.write(kyc_details["data"][st.session_state['artifacts']['requested_kyc_number']]["docs"][0]["value"]))
+                    #commented:
+                    # st.image(st.session_state["artifacts"]["selfie"])
+                    # st.subheader("Aadhar Video")
+                    # st.video(st.session_state["artifacts"]["aadhar_video"])
+                    # st.subheader("PAN Video")
+                    # st.video(st.session_state["artifacts"]["pan_video"])
+                    st.subheader("Expiry Date")
+                    st.write(kyc_details["data"][st.session_state['artifacts']['requested_kyc_number']]["expiry_date"])
             # st.write(access)
             
             if st.button("Send Request") :
-                st.write( st.session_state['artifacts']['access_kyc'])
+                # st.write( st.session_state['artifacts']['access_kyc'])
                 resp = requests.post(REST_API+'/request_kyc_details',json={"kyc_number":st.session_state['artifacts']['requested_kyc_number'],"user_data":{"bank_name":st.session_state['artifacts']['bank_name'],"private_key":st.session_state['artifacts']['private_key']}})
-                st.write(resp.json())
+                # st.write(resp.json())
+                # temp_json = {
+                # "data": "{\n  \"data\": [\n    {\n      \"id\": \"07af200c935f530955afb9e9e2e9a3971959189e589094f633ec95377c1f504f3f285548248155b0c5e04bbf225cfff05a21359cab4027de3f9484a1bf9ee5c1\",\n      \"invalid_transactions\": [],\n      \"status\": \"COMMITTED\"\n    }\n  ],\n  \"link\": \"http://10.168.126.150:8008/batch_statuses?id=07af200c935f530955afb9e9e2e9a3971959189e589094f633ec95377c1f504f3f285548248155b0c5e04bbf225cfff05a21359cab4027de3f9484a1bf9ee5c1&wait=10\"\n}"
+                # }
                 st.success("Request has been sent")
                 st.session_state['artifacts']['requested_kyc_number']
                 # write(st.session_state['artifacts']['kyc_response'])
 
-            st.write("\n\n")
-            st.subheader("Request List")
-            requests_table = pd.DataFrame({
-                "Name" : ["Skanda", "Kavya", "Vishnu"],
-                "Mobile Number" : ["937282399", "9747378822", "977647387"],
-                "Status" : ["Approved", "Rejected", "Pending"]
-            })
-            colms = st.columns((1, 2, 2, 2))
-            fields = ['##### S.No', '##### Name', '##### Mobile Number', '##### Request Status']
+            # st.write("\n\n")
+            # st.subheader("Request List")
+            # requests_table = pd.DataFrame({
+            #     "Name" : ["Skanda", "Kavya", "Vishnu"],
+            #     "Mobile Number" : ["937282399", "9747378822", "977647387"],
+            #     "Status" : ["Approved", "Rejected", "Pending"]
+            # })
+            # colms = st.columns((1, 2, 2, 2))
+            # fields = ['##### S.No', '##### Name', '##### Mobile Number', '##### Request Status']
 
-            for col, field_name in zip(colms, fields):
-                # header
-                col.write(field_name)
-            st.write("\n")
+            # for col, field_name in zip(colms, fields):
+            #     # header
+            #     col.write(field_name)
+            # st.write("\n")
 
-            for x, bank in enumerate(requests_table['Name']):
-                col1, col2, col3, col4 = st.columns((1, 2, 2, 2))
-                col1.write(x)
-                col2.write(requests_table['Name'][x])
-                col3.write(requests_table['Mobile Number'][x])
-                col4.write(requests_table['Status'][x])
+            # for x, bank in enumerate(requests_table['Name']):
+            #     col1, col2, col3, col4 = st.columns((1, 2, 2, 2))
+            #     col1.write(x)
+            #     col2.write(requests_table['Name'][x])
+            #     col3.write(requests_table['Mobile Number'][x])
+            #     col4.write(requests_table['Status'][x])
 
     else:
         st.error("Please Sign in")
