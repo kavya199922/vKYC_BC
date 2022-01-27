@@ -3,3 +3,4 @@ mtcnn
 boto3
 pandas
 opencv-python
+pillow
