@@ -160,7 +160,8 @@ class KycClient(object):
         res = requests.get(url = self._base_url+"/state/{}".format(paddr))
         response = json.loads((base64.b64decode(yaml.safe_load(res.text)["data"])).decode('utf-8'))
         print(response)
-        if bank_name in response[kyc_number]["allowed_banks"]:
+        allowed_banks = [ bank['bank_name'] for bank in  response[kyc_number]['allowed_banks']]
+        if bank_name in allowed_banks:
             # update customer kyc status 
              kyc_data = response
              kyc_data[kyc_number]['status'] = status
@@ -178,43 +179,47 @@ class KycClient(object):
         return result
     
     def request_kyc_details(self,data):
-        bank_name = data['user_data']['bank_name'] 
+        bank_name_url = data['user_data'] 
         kyc_number= data['kyc_number']
         # push to pending requests in customer Tx Family
-        result = self.update_pending_requests_customer(bank_name,kyc_number)
+        result = self.update_pending_requests_customer(bank_name_url['bank_name'],kyc_number)
         return result
 
 
 
     def accept_kyc_request(self,data):
-        bank_name = data['user_data']['bank_name'] 
+        # HDFC: ICICIC 
+        bank_name_url = data['user_data']
         kyc_number= data['kyc_number']
         paddr = _hash('kyc_customer'.encode('utf-8'))[0:35] + _hash(kyc_number.encode('utf-8'))[0:35] 
         res = requests.get(url = self._base_url+"/state/{}".format(paddr))
         response = json.loads((base64.b64decode(yaml.safe_load(res.text)["data"])).decode('utf-8'))
         # add banks to allowed banks
-        response[kyc_number]['allowed_banks'].append(bank_name)
+        response[kyc_number]['allowed_banks'].append(bank_name_url)
         paddr = _hash('kyc_customer'.encode('utf-8'))[0:35] + _hash(kyc_number.encode('utf-8'))[0:35] 
         result = self._wrap_and_send(paddr,response,family_name = FAMILY_NAME_CUSTOMER)
         # remove bank from pending requests
-        result = self.update_pending_requests_customer(bank_name,kyc_number,action='pop')
+        result = self.update_pending_requests_customer(bank_name_url['bank_name'],kyc_number,action='pop')
         return response
     
     def reject_kyc_request(self,data):
-        bank_name = data['user_data']['bank_name'] 
+        bank_name_url = data['user_data'] 
         kyc_number= data['kyc_number']
         # remove bank from pending requests
-        result = self.update_pending_requests_customer(bank_name,kyc_number,action='pop')
+        result = self.update_pending_requests_customer(bank_name['bank_name'],kyc_number,action='pop')
         return response
 
     
     def view_kyc_details(self,data):
         paddr = _hash('kyc_customer'.encode('utf-8'))[0:35] + _hash(data['kyc_number'].encode('utf-8'))[0:35] 
         res = requests.get(url = self._base_url+"/state/{}".format(paddr))
+        print(res)
         response = json.loads((base64.b64decode(yaml.safe_load(res.text)["data"])).decode('utf-8'))
         bank_name = data['user_data']['bank_name'] if 'bank_name' in data['user_data'] else ''
         kyc_number = data['kyc_number']
-        if data['user_data']['user_type'] == 'customer' or (data['user_data']['user_type'] == 'bank' and bank_name in response[kyc_number]['allowed_banks']):
+        # "allowed_banks":[{"bank_name":},{"bank_name":},{"bank_name":}]
+        
+        if data['user_data']['user_type'] == 'customer' or (data['user_data']['user_type'] == 'bank' and bank_name in  [ bank['bank_name'] for bank in  response[kyc_number]['allowed_banks']]):
             return response
         else:
             return "Not Allowed to view"
