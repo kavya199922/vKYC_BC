@@ -70,10 +70,12 @@ class KycClient(object):
         paddr=create_address(mode=kyc_details['user_data']['password'],name=user_data['mobile_number'],private_key=self._private_key,family_name = FAMILY_NAME_CUSTOMER)
         result = self._wrap_and_send(paddr,user_data,family_name = FAMILY_NAME_CUSTOMER)
         # add to pending lists in bank
-        self.update_pending_lists_bank(kyc_details['kyc_data']['assigned_to'],kyc_number)
+        response = self.update_pending_lists_bank(kyc_details['kyc_data']['assigned_to'],kyc_number)
+        print('-----------------')
+        print(response)
         return kyc_number
     def update_pending_lists_bank(self,bank_name,kyc_number,action=''):
-        paddr = _hash('pending_bank'.encode('utf-8'))[0:35] + _hash(kyc_number.encode('utf-8'))[0:35]
+        paddr = _hash('pending_bank'.encode('utf-8'))[0:35] + _hash(bank_name.encode('utf-8'))[0:35]
         print(paddr)
         res = requests.get(url = self._base_url+"/state/{}".format(paddr))
         print(res.status_code,type(res.status_code))
@@ -93,9 +95,10 @@ class KycClient(object):
                 print(pending_lists)
                 pending_lists['pending_list'].remove(kyc_number)
             else:
+                print(pending_lists)
                 pending_lists['pending_list'].append(kyc_number)
             print(pending_lists)
-            data = {'bank_name':bank_name,"pending_list":pending_lists,'action':'update pending list'}
+            data = {'bank_name':bank_name,"pending_list":pending_lists['pending_list'],'action':'update pending list'}
             result = self._wrap_and_send(paddr,data,family_name = FAMILY_NAME_BANK)
         return result
     
@@ -122,7 +125,7 @@ class KycClient(object):
             else:
                 pending_lists['pending_banks'].append(bank_name)
             print(pending_lists)
-            data = {"kyc_number":kyc_number,"pending_banks":pending_lists,'action':'update pending bank'}
+            data = {"kyc_number":kyc_number,"pending_banks":pending_lists['pending_banks'],'action':'update pending bank'}
             result = self._wrap_and_send(paddr,data,family_name = FAMILY_NAME_CUSTOMER)
         return result
     
@@ -131,6 +134,7 @@ class KycClient(object):
          res = requests.get(url = self._base_url+"/state/{}".format(paddr))
          print(res.status_code)
          if res.status_code ==404:
+             print(paddr)
              return "No Data"
          else:
             response = (base64.b64decode(yaml.safe_load(res.text)["data"]))
@@ -254,7 +258,8 @@ class KycClient(object):
         '''
         print('inside add tx.py')
         print('address')
-        operation = {'add bank':{'family':FAMILY_NAME_BANK,'name':'name'},'add customer':{'family':FAMILY_NAME_CUSTOMER,'name':'mobile_number'}}
+        print(info)
+        operation = {'add bank':{'family':FAMILY_NAME_BANK,'name':'identifier'},'add customer':{'family':FAMILY_NAME_CUSTOMER,'name':'mobile_number'}}
         info['action'] ='add bank' if info['user_type'] =='BANK' else 'add employee' if  info['user_type'] =='BANK EMPLOYEE' else 'add customer'
         paddr=create_address(mode=password,name=info[operation[info['action']]['name']],private_key=self._private_key,family_name = operation[info['action']]['family'])
         print(info)

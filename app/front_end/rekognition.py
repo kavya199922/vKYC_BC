@@ -3,7 +3,8 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 
 import boto3
-from mtcnn.mtcnn import MTCNN
+#commented:
+# from mtcnn.mtcnn import MTCNN
 from numpy import asarray
 import cv2
 

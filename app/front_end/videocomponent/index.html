@@ -1,0 +1,153 @@
+<html>
+  <style>
+    button {
+      display: inline-flex;
+      -webkit-box-align: center;
+      align-items: center;
+      -webkit-box-pack: center;
+      justify-content: center;
+      font-weight: 400;
+      padding: 0.25rem 0.75rem;
+      border-radius: 0.25rem;
+      margin: 0px;
+      line-height: 1.6;
+      color: inherit;
+      width: auto;
+      user-select: none;
+      background-color: rgb(255, 255, 255);
+      border: 1px solid rgba(49, 51, 63, 0.2);
+      cursor: pointer;
+    }
+  </style>
+  <body>
+    <!-- Set up your HTML here -->
+    <div id="video-container">
+      <video
+        autoplay
+        muted
+        id="web-cam-container"
+        style="background-color: grey; width: 100%; height: 80%"
+      >
+        Your browser doesn't support the video tag
+      </video>
+    </div>
+    <div class="recording" id="vid-record-status">
+      <br />
+    </div>
+
+    <!-- This button will start the video recording -->
+    <button type="button" id="start-vid-recording">
+      Start video recording
+    </button>
+
+    <!-- This button will stop the video recording -->
+    <button
+      type="button"
+      style="display: none"
+      id="stop-vid-recording"
+      onclick="stopRecording(this, 
+    document.getElementById('start-vid-recording'))"
+    >
+      Stop video recording
+    </button>
+    <script>
+      function sendMessageToStreamlitClient(type, data) {
+        var outData = Object.assign(
+          {
+            isStreamlitMessage: true,
+            type: type,
+          },
+          data
+        );
+        window.parent.postMessage(outData, "*");
+      }
+      function init() {
+        sendMessageToStreamlitClient("streamlit:componentReady", {
+          apiVersion: 1,
+        });
+      }
+      function setFrameHeight(height) {
+        sendMessageToStreamlitClient("streamlit:setFrameHeight", {
+          height: height,
+        });
+      }
+      function sendDataToPython(data) {
+        sendMessageToStreamlitClient("streamlit:setComponentValue", data);
+      }
+
+      function onDataFromPython(event) {
+        if (event.data.type !== "streamlit:render") return;
+      }
+
+      window.addEventListener("message", onDataFromPython);
+      init();
+      window.addEventListener("load", function () {
+        window.setTimeout(function () {
+          setFrameHeight(480);
+        }, 0);
+      });
+
+      const webCamContainer = document.getElementById("web-cam-container");
+      var blobs_recorded = [];
+      var mediaRecorder;
+
+      const camera_button = document.getElementById("start-vid-recording");
+      camera_button.addEventListener("click", async function () {
+        document.getElementById("vid-record-status").innerHTML =
+          "<br/>Recording...<br/><br/>";
+        camera_stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+        webCamContainer.srcObject = camera_stream;
+
+        media_recorder = new MediaRecorder(camera_stream, {
+          mimeType: "video/webm",
+        });
+        media_recorder.addEventListener("dataavailable", (e) => {
+          blobs_recorded.push(e.data);
+        });
+        media_recorder.addEventListener("stop", () => {
+          let video_local = URL.createObjectURL(
+            new Blob(blobs_recorded, { type: "video/webm" })
+          );
+          var reader = new FileReader();
+          reader.readAsDataURL(
+            new Blob(blobs_recorded, { type: "video/webm" })
+          );
+          reader.onloadend = () => {
+            var base64data = reader.result;
+            document.getElementById("video-container").innerHTML =
+              "<video autoplay controls='true' src='" +
+              video_local +
+              "'></video>";
+
+            camera_stream
+              .getTracks() // get all tracks from the MediaStream
+              .forEach((track) => track.stop()); // stop each of them
+
+            sendDataToPython({
+              value: base64data,
+              dataType: "json",
+            });
+          };
+        });
+        document.getElementById("stop-vid-recording").style.display = "block";
+        document.getElementById("start-vid-recording").style.display = "none";
+        media_recorder.start();
+      });
+
+      function stopRecording() {
+        media_recorder.stop();
+        document.getElementById("vid-record-status").innerHTML = "<br/>";
+        document.getElementById("stop-vid-recording").style.display = "none";
+        document.getElementById("start-vid-recording").style.display = "block";
+
+        // document.getElementsByTagName("body")[0].style.display = "none";
+        // sendMessageToStreamlitClient("streamlit:setFrameHeight", {
+        //   height: 0,
+        // });
+      }
+    </script>
+  </body>
+</html>
