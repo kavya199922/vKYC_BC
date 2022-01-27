@@ -49,4 +49,5 @@ class S3:
         self.region = region
         if self.access_key is None or self.secret_key is None or self.region is None:
             raise Exception("Please provide access_key, secret_key and region")
-        self.client = boto3.client('s3', region_name=self.region, aws_access_key_id=self.access_key, aws_secret_access_key=self.secret_key)
+        self.session = boto3.Session(region_name=self.region, aws_access_key_id=self.access_key, aws_secret_access_key=self.secret_key)
+        self.client = boto3.client("s3", region_name=self.region, aws_access_key_id=self.access_key, aws_secret_access_key=self.secret_key)

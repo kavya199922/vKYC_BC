@@ -1,5 +1,7 @@
 import os
 from cv2 import error
+from uuid import uuid1
+from validators import uuid
 os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 
 import streamlit as st
@@ -337,7 +339,10 @@ if st.session_state['page'] == 'Home':
             if st.session_state['sub_page'] == 'Confirmation':
                 st.title('Confirm your Documents, Selfie and Video')
                 st.subheader("Details")
-
+                
+                st.subheader("Full name")
+                st.write(st.session_state["artifacts"]["basic_info"]["full_name"] + " \u2705") 
+            
                 st.subheader("Verifier bank")
                 st.write(st.session_state['artifacts']["verifier_bank"])
 
@@ -367,14 +372,60 @@ if st.session_state['page'] == 'Home':
                 st.write(st.session_state["artifacts"]["AI_Detection"])
                 st.write("\n")
 
+            
+
 
                 if st.button('Confirm and Submit KYC', key='2'):    
-                    st.info("Uploading data")
-                    BUCKET_NAME = "uploads.blockchain-geeks-askv"
                     data_on_bc = {
 
                     }
-                    st.session_state['sub_page'] = 'KYC Status'
+
+                    st.info("Uploading data")
+                    BUCKET_NAME = "uploads.blockchain-geeks-askv"
+                    upload_id = str("test")
+                    s3 = st.session_state["s3_object"].session.resource("s3")
+                    s3_client = st.session_state["s3_object"].client
+                    allowed_banks = [
+                        {
+                        "bank_name": st.session_state['artifacts']["verifier_bank"],
+                        "presigned_url":{
+                            "aadhar_pdf": "",
+                            "pan_pdf": "",
+                            "selfie": "",
+                            "aadhar_video": "",
+                            "pan_video": "",
+                            }
+                        }
+                    ]
+
+                    def upload_data(keyfile, body):
+                        global data_on_bc, allowed_banks, upload_id
+                        filename = upload_id + "/" + keyfile
+                        object = s3.Object(BUCKET_NAME, filename)
+                        result = object.put(Body=body)
+                        url = s3_client.generate_presigned_url(ClientMethod='get_object', 
+                                Params={'Bucket': BUCKET_NAME, 'Key': filename},
+                                ExpiresIn=36000)
+                        data_on_bc[keyfile] = url.split("?")[0]
+                        allowed_banks[0]["presigned_url"][keyfile] = {}
+                        for qp in url.split("?")[1].split("&"):
+                            allowed_banks[0]["presigned_url"][keyfile][qp.split("=")[0]] = qp.split("=")[1]
+                    
+                    upload_data("aadhar_pdf", st.session_state["artifacts"]["aadhar_pdf"].getvalue())
+                    upload_data("pan_pdf", st.session_state["artifacts"]["pan_pdf"].getvalue())
+                    upload_data("aadhar_video", base64.b64decode(st.session_state["artifacts"]["aadhar_video"].replace("data:video/webm;base64","")))
+                    upload_data("pan_video", base64.b64decode(st.session_state["artifacts"]["pan_video"].replace("data:video/webm;base64","")))
+                    upload_data("selfie", st.session_state["artifacts"]["selfie"])
+
+                    data_on_bc["location"] = st.session_state["artifacts"]["location"]
+                    data_on_bc["verifier_bank"] = st.session_state["artifacts"]["verifier_bank"]
+                    data_on_bc["AI_Detection"] = st.session_state["artifacts"]["AI_Detection"]
+                    data_on_bc["fullname"] = st.session_state["artifacts"]["basic_info"]["full_name"]
+
+                    st.write(data_on_bc)
+                    st.write(allowed_banks)
+
+                    # st.session_state['sub_page'] = 'KYC Status'
 
             if st.session_state['sub_page'] == 'KYC Status':
                 st.title('KYC submitted and pending for approval')
