@@ -574,10 +574,17 @@ if st.session_state['page'] == 'Requests':
             st.title("KYC Access Requests")
             # request to access kyc 
             kyc_number = st.text_input("Kyc Number")
-            if st.button("Send Request") :
-                resp = requests.post(REST_API+'/request_kyc_details',json={"kyc_number":kyc_number,"user_data":{"bank_name":st.session_state['artifacts']['bank_name'],"private_key":st.session_state['artifacts']['private_key']}})
-                st.write(resp.json())
-                st.success("Request has been sent")
+            if st.button('View KYC',key=kyc_number):
+                resp = requests.post(REST_API+'/view_kyc_details',json ={'kyc_number':st.session_state['artifacts']['kyc_number'],'user_data':{'user_type':'bank','private_key':st.session_state['artifacts']['private_key'],'bank_name':st.session_state['artifacts']['bank_name']}})
+                # st.write(resp.json())
+                if resp.json()['data'] == 'Not Allowed to view':
+                    st.write('You don\'t have access to this KYC')
+                    if st.button("Send Request") :
+                        resp = requests.post(REST_API+'/request_kyc_details',json={"kyc_number":kyc_number,"user_data":{"bank_name":st.session_state['artifacts']['bank_name'],"private_key":st.session_state['artifacts']['private_key']}})
+                        st.write(resp.json())
+                        st.success("Request has been sent")
+                else:
+                    st.write(resp.json())
 
             st.write("\n\n")
             st.subheader("Request List")
