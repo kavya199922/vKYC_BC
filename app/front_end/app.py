@@ -19,6 +19,11 @@ from videocomponent import videocomponent
 import pypdfium2 as pdfium
 import re
 
+from streamlit_bokeh_events import streamlit_bokeh_events
+from io import BytesIO, StringIO
+from bokeh.models.widgets import Button
+from bokeh.models import CustomJS
+
 user_types = ['Customer', 'Bank Employee']
 banks_list = ['HDFC', 'ICICI']
 
@@ -117,7 +122,6 @@ session_params = [
 ]
 
 
-print(default_initial_vars)
 for key in default_initial_vars:
     if key not in st.session_state:
         st.session_state[key] = default_initial_vars[key]
@@ -491,8 +495,8 @@ if st.session_state['page'] == 'Home':
                         data_on_bc["AI_Detection"] = st.session_state["artifacts"]["AI_Detection"]
                         data_on_bc["fullname"] = st.session_state["artifacts"]["basic_info"]["full_name"]
 
-                        st.write(data_on_bc)
-                        st.write(allowed_banks)
+                        # st.write(data_on_bc)
+                        # st.write(allowed_banks)
 
                         st.write("\n")
 
@@ -510,6 +514,7 @@ if st.session_state['page'] == 'Home':
                 st.title('KYC Status: '+ resp.json()['data'][st.session_state['artifacts']['kyc_number']]['status'])
                 st.title("KYC Details")
                 kyc_details = resp.json()
+                # st.write(kyc_details)
                 temp_json = {
                     "data": {
                         "7299be154e": {
@@ -539,6 +544,11 @@ if st.session_state['page'] == 'Home':
                     }
                     }
 
+                qp_dict = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["allowed_banks"][0]["presigned_url"]["aadhar_pdf"]
+                qp = "?"
+                for k,v in qp_dict.items():
+                    qp = qp + k+"="+v+"&"
+
                 st.subheader("KYC Number")
                 st.write(st.session_state['artifacts']['kyc_number'])
 
@@ -546,29 +556,26 @@ if st.session_state['page'] == 'Home':
                 st.write(kyc_details["data"][st.session_state['artifacts']['kyc_number']]["assigned_to"])
 
                 st.subheader("Aadhar card PDF")
-                st.write(kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"][0]["value"])
-                #commented:
-                # base64_pdf = base64.b64encode(st.session_state["artifacts"]["aadhar_pdf"])
-                # pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
-                # st.markdown(pdf_display, unsafe_allow_html=True)
+                src_url = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"]["aadhar_pdf"] + qp
+                st.write(src_url)
 
                 st.subheader("PAN card PDF")
-                st.write(kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"][0]["value"])
-                #commented:
-                # base64_pdf = base64.b64encode(st.session_state["artifacts"]["pan_pdf"])
-                # pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
-                # st.markdown(pdf_display, unsafe_allow_html=True)
+                src_url = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"]["pan_pdf"] + qp
+                st.write(src_url)
                 
                 st.subheader("Selfie")
-                st.write(st.write(kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"][0]["value"]))
-                #commented:
-                # st.image(st.session_state["artifacts"]["selfie"])
-                # st.subheader("Aadhar Video")
-                # st.video(st.session_state["artifacts"]["aadhar_video"])
-                # st.subheader("PAN Video")
-                # st.video(st.session_state["artifacts"]["pan_video"])
-                st.subheader("Expiry Date")
-                st.write(kyc_details["data"][st.session_state['artifacts']['kyc_number']]["expiry_date"])
+                src_url = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"]["selfie"] + qp
+                st.write(src_url)
+
+                       
+                st.subheader("Aadhar Video")
+                src_url = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"]["selfie"] + qp
+                st.write(src_url)
+                       
+                st.subheader("PAN video")
+                src_url = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"]["selfie"] + qp
+                st.write(src_url)
+            
 
         # Employee
         if st.session_state['artifacts']['user_type'] == 'BANK':
@@ -642,38 +649,43 @@ if st.session_state['page'] == 'Home':
                     st.title("KYC Details")
                     st.subheader("KYC Number")
                     st.write(st.session_state['current_customer'])
+                    st.session_state['artifacts']['kyc_number'] = st.session_state['current_customer']
 
                     st.subheader("KYC Status")
                     st.write(kyc_details["data"][st.session_state['current_customer']]["status"])
 
+                    qp_dict = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["allowed_banks"][0]["presigned_url"]["aadhar_pdf"]
+                    qp = "?"
+                    for k,v in qp_dict.items():
+                        qp = qp + k+"="+v+"&"
+
+                    st.subheader("KYC Number")
+                    st.write(st.session_state['artifacts']['kyc_number'])
+
                     st.subheader("Verifier bank")
-                    st.write(kyc_details["data"][st.session_state['current_customer']]["assigned_to"])
+                    st.write(kyc_details["data"][st.session_state['artifacts']['kyc_number']]["assigned_to"])
 
                     st.subheader("Aadhar card PDF")
-                    st.write(kyc_details["data"][st.session_state['current_customer']]["docs"][0]["value"])
-                    #commented:
-                    # base64_pdf = base64.b64encode(st.session_state["artifacts"]["aadhar_pdf"])
-                    # pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
-                    # st.markdown(pdf_display, unsafe_allow_html=True)
+                    src_url = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"]["aadhar_pdf"] + qp
+                    st.write(src_url)
 
                     st.subheader("PAN card PDF")
-                    st.write(kyc_details["data"][st.session_state['current_customer']]["docs"][0]["value"])
-                    #commented:
-                    # base64_pdf = base64.b64encode(st.session_state["artifacts"]["pan_pdf"])
-                    # pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
-                    # st.markdown(pdf_display, unsafe_allow_html=True)
+                    src_url = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"]["pan_pdf"] + qp
+                    st.write(src_url)
                     
                     st.subheader("Selfie")
-                    st.write(st.write(kyc_details["data"][st.session_state['current_customer']]["docs"][0]["value"]))
-                    #commented:
-                    # st.image(st.session_state["artifacts"]["selfie"])
-                    # st.subheader("Aadhar Video")
-                    # st.video(st.session_state["artifacts"]["aadhar_video"])
-                    # st.subheader("PAN Video")
-                    # st.video(st.session_state["artifacts"]["pan_video"])
-                    st.subheader("Expiry Date")
-                    st.write(kyc_details["data"][st.session_state['current_customer']]["expiry_date"])
+                    src_url = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"]["selfie"] + qp
+                    st.write(src_url)
+
                         
+                    st.subheader("Aadhar Video")
+                    src_url = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"]["selfie"] + qp
+                    st.write(src_url)
+                        
+                    st.subheader("PAN video")
+                    src_url = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"]["selfie"] + qp
+                    st.write(src_url)
+                                            
                     st.write("\n")
                     st.write("\n")
                     co3,co4 = st.columns([1,1])
@@ -905,37 +917,42 @@ if st.session_state['page'] == 'Requests':
                     st.title("KYC Details")
                     st.subheader("KYC Number")
                     st.write(st.session_state['artifacts']['requested_kyc_number'])
-
+                    st.session_state['artifacts']['kyc_number'] = st.session_state['artifacts']['requested_kyc_number']
                     st.subheader("KYC Status")
                     st.write(kyc_details["data"][st.session_state['artifacts']['requested_kyc_number']]["status"])
 
+                    qp_dict = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["allowed_banks"][0]["presigned_url"]["aadhar_pdf"]
+                    qp = "?"
+                    for k,v in qp_dict.items():
+                        qp = qp + k+"="+v+"&"
+
+                    st.subheader("KYC Number")
+                    st.write(st.session_state['artifacts']['kyc_number'])
+
                     st.subheader("Verifier bank")
-                    st.write(kyc_details["data"][st.session_state['artifacts']['requested_kyc_number']]["assigned_to"])
+                    st.write(kyc_details["data"][st.session_state['artifacts']['kyc_number']]["assigned_to"])
 
                     st.subheader("Aadhar card PDF")
-                    st.write(kyc_details["data"][st.session_state['artifacts']['requested_kyc_number']]["docs"][0]["value"])
-                    #commented:
-                    # base64_pdf = base64.b64encode(st.session_state["artifacts"]["aadhar_pdf"])
-                    # pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
-                    # st.markdown(pdf_display, unsafe_allow_html=True)
+                    src_url = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"]["aadhar_pdf"] + qp
+                    st.write(src_url)
 
                     st.subheader("PAN card PDF")
-                    st.write(kyc_details["data"][st.session_state['artifacts']['requested_kyc_number']]["docs"][0]["value"])
-                    #commented:
-                    # base64_pdf = base64.b64encode(st.session_state["artifacts"]["pan_pdf"])
-                    # pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
-                    # st.markdown(pdf_display, unsafe_allow_html=True)
+                    src_url = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"]["pan_pdf"] + qp
+                    st.write(src_url)
                     
                     st.subheader("Selfie")
-                    st.write(st.write(kyc_details["data"][st.session_state['artifacts']['requested_kyc_number']]["docs"][0]["value"]))
-                    #commented:
-                    # st.image(st.session_state["artifacts"]["selfie"])
-                    # st.subheader("Aadhar Video")
-                    # st.video(st.session_state["artifacts"]["aadhar_video"])
-                    # st.subheader("PAN Video")
-                    # st.video(st.session_state["artifacts"]["pan_video"])
-                    st.subheader("Expiry Date")
-                    st.write(kyc_details["data"][st.session_state['artifacts']['requested_kyc_number']]["expiry_date"])
+                    src_url = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"]["selfie"] + qp
+                    st.write(src_url)
+
+                        
+                    st.subheader("Aadhar Video")
+                    src_url = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"]["selfie"] + qp
+                    st.write(src_url)
+                        
+                    st.subheader("PAN video")
+                    src_url = kyc_details["data"][st.session_state['artifacts']['kyc_number']]["docs"]["selfie"] + qp
+                    st.write(src_url)
+
             # st.write(access)
             
             if st.button("Send Request") :
