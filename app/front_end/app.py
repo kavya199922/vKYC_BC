@@ -7,6 +7,10 @@ import pandas as pd
 import rekognition
 import default
 from default import default_initial_vars
+from streamlit_bokeh_events import streamlit_bokeh_events
+from bokeh.models.widgets import Button
+from bokeh.models import CustomJS
+import requests
 
 import base64
 import cv2
@@ -34,9 +38,10 @@ def displayPDF(file):
 
 def extract_ocr(resp, key):
     filtered_detection = [detection["DetectedText"] for detection in resp["TextDetections"] if detection["Confidence"] > 90 and detection["Type"] == "LINE"]
+    filtered_detection_word = [detection["DetectedText"] for detection in resp["TextDetections"] if detection["Confidence"] > 90 and detection["Type"] == "WORD"]
     detected_keys = {}
     if key=="Aadhar":
-        
+                
         for word in filtered_detection:
             # match aadhar number regex
             if re.match(r'[0-9]{4} [0-9]{4} [0-9]{4}', word):
@@ -44,6 +49,15 @@ def extract_ocr(resp, key):
             if re.match(r'^([0-2][0-9]|(3)[0-1])(\/)(((0)[0-9])|((1)[0-2]))(\/)\d{4}$', word):
                 if "Issue" not in word or "DOB" in word:
                     detected_keys["dob_aadhar"] = word
+
+        # Name match validation
+        given_name_words = [word.lower() for word in st.session_state["artifacts"]["basic_info"]["full_name"].split()]
+        filtered_detection_word = [word.lower() for word in filtered_detection_word]
+        if len(list(set(filtered_detection_word) & set(given_name_words))) == len(given_name_words):
+            detected_keys["aadhar_name_match"] = True
+        else:
+            detected_keys["aadhar_name_match"] = False
+
     
     if key=="PAN":
         for word in filtered_detection:
@@ -80,6 +94,8 @@ def videoRecPlay(key):
         else:
             
             error_videoholder.success("Video valid!")
+            bytes_data = base64.b64decode(videoholder_video_stream.replace("data:video/webm;base64",""))
+            
             return videoholder_video_stream
     return None
 
@@ -175,6 +191,7 @@ if st.session_state['page'] == 'Home':
             if st.session_state['sub_page'] == 'Choose Bank':
                 st.subheader("Step 1: Choose verifier bank")
                 st.session_state["artifacts"]["verifier_bank"] = st.selectbox('Bank', banks_list)
+                st.session_state["artifacts"]["basic_info"]["full_name"] = st.text_input("Full Name (As per Aadhar)")
                 if st.button('Next', key='uploadscreenbtn'):
                     st.session_state['sub_page'] = 'Upload Docs'
             if st.session_state['sub_page'] == 'Upload Docs':
@@ -202,6 +219,8 @@ if st.session_state['page'] == 'Home':
                             pil_image.save("tmp/aadhar.png")
                             resp = st.session_state["rekog_object"].client.detect_text(Image={'Bytes': cv2.imencode('.jpg', np.array(pil_image))[1].tobytes()})
                             detected_keys = extract_ocr(resp, "Aadhar")
+                            if not detected_keys["aadhar_name_match"]:
+                                st.error("Name not matched with Aadhar")
                             st.session_state["artifacts"]["AI_Detection"]["aadhar"] = detected_keys
                     st.info("Aadhar uploaded")
                     
@@ -268,8 +287,37 @@ if st.session_state['page'] == 'Home':
                 st.session_state["artifacts"]["pan_video"] = videoRecPlay("PAN")
                 
 
-                if st.button('Next', key='confirmation'):
-                    st.session_state['sub_page'] = 'Confirmation'
+                if st.button('Next', key='location'):
+                    st.session_state['sub_page'] = 'Location'
+
+            if st.session_state['sub_page'] == 'Location':
+                st.title('Location')
+                st.markdown("We need your location to verify your identity")
+                loc_button = Button(label="Get Location")
+                loc_button.js_on_event("button_click", CustomJS(code="""
+                    navigator.geolocation.getCurrentPosition(
+                        (loc) => {
+                            document.dispatchEvent(new CustomEvent("GET_LOCATION", {detail: {lat: loc.coords.latitude, lon: loc.coords.longitude}}))
+                        }
+                    )
+                    """))
+                result = streamlit_bokeh_events(
+                    loc_button,
+                    events="GET_LOCATION",
+                    key="get_location",
+                    refresh_on_update=False,
+                    override_height=75,
+                    debounce_time=0)
+                latlng = result["GET_LOCATION"]
+                print(latlng)
+                if latlng is not None:
+                    x = requests.get("https://nominatim.openstreetmap.org/reverse", {"lat": latlng["lat"], "lon": latlng["lon"], "format": "json"})
+                    st.write("Currently we find you nearby: ")
+                    st.session_state["artifacts"]["location"] = x.json()["display_name"]
+                    st.markdown("**"+st.session_state["artifacts"]["location"]+"**")
+                    st.write("\n")
+                    if st.button('Confirm', key='confirmation'):
+                        st.session_state['sub_page'] = 'Confirmation'
 
             if st.session_state['sub_page'] == 'Confirmation':
                 st.title('Confirm your Documents, Selfie and Video')
@@ -290,16 +338,23 @@ if st.session_state['page'] == 'Home':
                 
                 st.subheader("Selfie")
                 st.image(st.session_state["artifacts"]["selfie"])
+
                 st.subheader("Aadhar Video")
                 st.video(base64.b64decode(st.session_state["artifacts"]["aadhar_video"].replace("data:video/webm;base64","")))
+
                 st.subheader("PAN Video")
                 st.video(base64.b64decode(st.session_state["artifacts"]["pan_video"].replace("data:video/webm;base64","")))
+
+                st.subheader("Location")
+                st.write(st.session_state["artifacts"]["location"])
+
                 st.subheader("AI Summary")
                 st.write(st.session_state["artifacts"]["AI_Detection"])
                 st.write("\n")
 
 
                 if st.button('Confirm and Submit KYC', key='2'):    
+                    data_on_bc = {}
                     st.session_state['sub_page'] = 'KYC Status'
 
             if st.session_state['sub_page'] == 'KYC Status':
