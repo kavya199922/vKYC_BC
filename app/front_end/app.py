@@ -287,51 +287,51 @@ if st.session_state['page'] == 'Home':
                         "Upload Aadhar as PDF", type=['pdf'], key='Aadhar')
                     if Aadhar_file is not None:
                         st.session_state["artifacts"]["aadhar_pdf"] = Aadhar_file
-                    with pdfium.PdfContext(Aadhar_file.getvalue()) as pdf:
-                        pil_image = pdfium.render_page(
-                            pdf,
-                            page_index = 0,
-                            scale = 1,
-                            rotation = 0,
-                            colour = 0xFFFFFFFF,
-                            annotations = True,
-                            greyscale = False,
-                            optimise_mode = pdfium.OptimiseMode.none,
-                        )
-                        faces = st.session_state["mtcnn"].detect_faces(np.array(pil_image))
-                        if(len(faces)==0):
-                            st.error("No face detected in Aadhar")
-                        else:
-                            pil_image.save("tmp/aadhar.png")
-                            resp = st.session_state["rekog_object"].client.detect_text(Image={'Bytes': cv2.imencode('.jpg', np.array(pil_image))[1].tobytes()})
-                            detected_keys = extract_ocr(resp, "Aadhar")
-                            if not detected_keys["aadhar_name_match"]:
-                                st.error("Name not matched with Aadhar")
-                            st.session_state["artifacts"]["AI_Detection"]["aadhar"] = detected_keys
-                    
-                        st.info("Aadhar uploaded")
+                        with pdfium.PdfContext(Aadhar_file.getvalue()) as pdf:
+                            pil_image = pdfium.render_page(
+                                pdf,
+                                page_index = 0,
+                                scale = 1,
+                                rotation = 0,
+                                colour = 0xFFFFFFFF,
+                                annotations = True,
+                                greyscale = False,
+                                optimise_mode = pdfium.OptimiseMode.none,
+                            )
+                            faces = st.session_state["mtcnn"].detect_faces(np.array(pil_image))
+                            if(len(faces)==0):
+                                st.error("No face detected in Aadhar")
+                            else:
+                                pil_image.save("tmp/aadhar.png")
+                                resp = st.session_state["rekog_object"].client.detect_text(Image={'Bytes': cv2.imencode('.jpg', np.array(pil_image))[1].tobytes()})
+                                detected_keys = extract_ocr(resp, "Aadhar")
+                                if not detected_keys["aadhar_name_match"]:
+                                    st.error("Name not matched with Aadhar")
+                                st.session_state["artifacts"]["AI_Detection"]["aadhar"] = detected_keys
+                        
+                            st.info("Aadhar uploaded")
 
                     PAN_file = st.file_uploader(
                             "Upload PAN as PDF", type=['pdf'], key='PAN')
                     if PAN_file is not None:
                         st.session_state["artifacts"]["pan_pdf"] = PAN_file
-                    with pdfium.PdfContext(PAN_file.getvalue()) as pdf:
-                        pil_image = pdfium.render_page(
-                            pdf,
-                            page_index = 0,
-                            scale = 1,
-                            rotation = 0,
-                            colour = 0xFFFFFFFF,
-                            annotations = True,
-                            greyscale = False,
-                            optimise_mode = pdfium.OptimiseMode.none,
-                        )
-                        pil_image.save("tmp/pan.png")
-                        resp = st.session_state["rekog_object"].client.detect_text(Image={'Bytes': cv2.imencode('.jpg', np.array(pil_image))[1].tobytes()})
-                        detected_keys = extract_ocr(resp, "PAN")
-                        st.session_state["artifacts"]["AI_Detection"]["PAN"] = detected_keys
-                      
-                        st.info("PAN uploaded")
+                        with pdfium.PdfContext(PAN_file.getvalue()) as pdf:
+                            pil_image = pdfium.render_page(
+                                pdf,
+                                page_index = 0,
+                                scale = 1,
+                                rotation = 0,
+                                colour = 0xFFFFFFFF,
+                                annotations = True,
+                                greyscale = False,
+                                optimise_mode = pdfium.OptimiseMode.none,
+                            )
+                            pil_image.save("tmp/pan.png")
+                            resp = st.session_state["rekog_object"].client.detect_text(Image={'Bytes': cv2.imencode('.jpg', np.array(pil_image))[1].tobytes()})
+                            detected_keys = extract_ocr(resp, "PAN")
+                            st.session_state["artifacts"]["AI_Detection"]["PAN"] = detected_keys
+                        
+                            st.info("PAN uploaded")
 
                     if PAN_file is not None and Aadhar_file is not None:
                         if st.button('Next', key='1'):
@@ -341,27 +341,27 @@ if st.session_state['page'] == 'Home':
                     st.subheader("Step 3: Take Selfie")
                     selfie_buffer = st.camera_input('Take a Selfie')
                     if selfie_buffer is not None:
-                    img = Image.open(selfie_buffer)
-                    img.save("tmp/selfie.png")
-                    img_array = np.array(img)
-                    image_bytes = selfie_buffer.getvalue()
-                    faces = st.session_state["mtcnn"].detect_faces(img_array)
-                    if(len(faces)==0):
-                        st.error("No face detected")
-                    else:                    
-                        source_image_bytes = open("tmp/aadhar.png", "rb").read()
-                        target_image_bytes = open("tmp/selfie.png", "rb").read()
-                        resp = st.session_state["rekog_object"].client.compare_faces(SimilarityThreshold=0.7,SourceImage={'Bytes': source_image_bytes},TargetImage={'Bytes': target_image_bytes})
-                        print(resp)
-                        if not len(resp['FaceMatches']):
-                            st.error("Face not matching with Aadhar")
-                        else:
-                            st.session_state["artifacts"]["selfie"] = target_image_bytes
-                            st.session_state["artifacts"]["AI_Detection"]["similarity_score_face"] = resp["FaceMatches"][0]["Similarity"]
-                            st.success("Face matching with Aadhar successful")
+                        img = Image.open(selfie_buffer)
+                        img.save("tmp/selfie.png")
+                        img_array = np.array(img)
+                        image_bytes = selfie_buffer.getvalue()
+                        faces = st.session_state["mtcnn"].detect_faces(img_array)
+                        if(len(faces)==0):
+                            st.error("No face detected")
+                        else:                    
+                            source_image_bytes = open("tmp/aadhar.png", "rb").read()
+                            target_image_bytes = open("tmp/selfie.png", "rb").read()
+                            resp = st.session_state["rekog_object"].client.compare_faces(SimilarityThreshold=0.7,SourceImage={'Bytes': source_image_bytes},TargetImage={'Bytes': target_image_bytes})
+                            print(resp)
+                            if not len(resp['FaceMatches']):
+                                st.error("Face not matching with Aadhar")
+                            else:
+                                st.session_state["artifacts"]["selfie"] = target_image_bytes
+                                st.session_state["artifacts"]["AI_Detection"]["similarity_score_face"] = resp["FaceMatches"][0]["Similarity"]
+                                st.success("Face matching with Aadhar successful")
 
-                    if st.button('Next', key='2'):
-                        st.session_state['sub_page'] = 'Verify Aadhar and PAN'
+                                if st.button('Next', key='2'):
+                                    st.session_state['sub_page'] = 'Verify Aadhar and PAN'
 
                 if st.session_state['sub_page'] == 'Verify Aadhar and PAN':
                     st.subheader("Step 4: Verify Aadhar and PAN")

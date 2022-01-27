@@ -22,10 +22,10 @@ default_initial_vars = {
     },
     'mtcnn': MTCNN(),
     "rekog_object": rekognition.Rekognition(
-            access_key=dotenv_values(".env").get('access_key_id'), 
-            secret_key=dotenv_values(".env").get('secret_key_id'), 
-            region=dotenv_values(".env").get('region')),
-    "s3_object": rekognition.S3( access_key=dotenv_values(".env").get('access_key_id'), 
-            secret_key=dotenv_values(".env").get('secret_key_id'), 
-            region=dotenv_values(".env").get('region'))
+            access_key=os.environ.get('access_key_id'), 
+            secret_key=os.environ.get('secret_key_id'), 
+            region=os.environ.get('region')),
+    "s3_object": rekognition.S3( access_key=os.environ.get('access_key_id'), 
+            secret_key=os.environ.get('secret_key_id'), 
+            region=os.environ.get('region'))
     }
