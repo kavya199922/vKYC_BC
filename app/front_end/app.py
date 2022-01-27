@@ -372,136 +372,130 @@ if st.session_state['page'] == 'Home':
                         
                     st.markdown("**2. PAN**")
                     st.session_state["artifacts"]["pan_video"] = videoRecPlay("PAN")
+
+                    if st.button('Next', key='location'):
+                        st.session_state['sub_page'] = 'Location'
+
+                if st.session_state['sub_page'] == 'Location':
+                    st.title('Location')
+                    st.markdown("We need your location to verify your identity")
+                    loc_button = Button(label="Get Location")
+                    loc_button.js_on_event("button_click", CustomJS(code="""
+                        navigator.geolocation.getCurrentPosition(
+                            (loc) => {
+                                document.dispatchEvent(new CustomEvent("GET_LOCATION", {detail: {lat: loc.coords.latitude, lon: loc.coords.longitude}}))
+                            }
+                        )
+                        """))
+                    result = streamlit_bokeh_events(
+                        loc_button,
+                        events="GET_LOCATION",
+                        key="get_location",
+                        refresh_on_update=False,
+                        override_height=75,
+                        debounce_time=0)
                     
-
-                    if st.button('Next', key='confirmation'):
-                        st.session_state['sub_page'] = 'Confirmation'
-
-                if st.button('Next', key='location'):
-                    st.session_state['sub_page'] = 'Location'
-
-            if st.session_state['sub_page'] == 'Location':
-                st.title('Location')
-                st.markdown("We need your location to verify your identity")
-                loc_button = Button(label="Get Location")
-                loc_button.js_on_event("button_click", CustomJS(code="""
-                    navigator.geolocation.getCurrentPosition(
-                        (loc) => {
-                            document.dispatchEvent(new CustomEvent("GET_LOCATION", {detail: {lat: loc.coords.latitude, lon: loc.coords.longitude}}))
-                        }
-                    )
-                    """))
-                result = streamlit_bokeh_events(
-                    loc_button,
-                    events="GET_LOCATION",
-                    key="get_location",
-                    refresh_on_update=False,
-                    override_height=75,
-                    debounce_time=0)
+                    if result is not None:
+                        latlng = result["GET_LOCATION"]
+                        print(latlng)
+                        x = requests.get("https://nominatim.openstreetmap.org/reverse", {"lat": latlng["lat"], "lon": latlng["lon"], "format": "json"})
+                        st.write("Currently we find you nearby: ")
+                        st.session_state["artifacts"]["location"] = x.json()["display_name"]
+                        st.markdown("**"+st.session_state["artifacts"]["location"]+"**")
+                        st.write("\n")
+                        if st.button('Confirm', key='confirmation'):
+                            st.session_state['sub_page'] = 'Confirmation'
                 
-                if result is not None:
-                    latlng = result["GET_LOCATION"]
-                    print(latlng)
-                    x = requests.get("https://nominatim.openstreetmap.org/reverse", {"lat": latlng["lat"], "lon": latlng["lon"], "format": "json"})
-                    st.write("Currently we find you nearby: ")
-                    st.session_state["artifacts"]["location"] = x.json()["display_name"]
-                    st.markdown("**"+st.session_state["artifacts"]["location"]+"**")
-                    st.write("\n")
-                    if st.button('Confirm', key='confirmation'):
-                        st.session_state['sub_page'] = 'Confirmation'
-            
-            if st.session_state['sub_page'] == 'Confirmation':
+                if st.session_state['sub_page'] == 'Confirmation':
                     st.title('Confirm your Documents, Selfie and Video')
                     st.subheader("Details")
                     st.subheader("Full name")
-                st.write(st.session_state["artifacts"]["basic_info"]["full_name"] + " \u2705") 
-            
-                st.subheader("Verifier bank")
-                st.write(st.session_state['artifacts']["verifier_bank"])
-
-                st.subheader("Aadhar card PDF")
-                base64_pdf =  base64.b64encode(st.session_state["artifacts"]["aadhar_pdf"].read()).decode('utf-8')
-                pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
-                st.markdown(pdf_display, unsafe_allow_html=True)
-
-                st.subheader("PAN card PDF")
-                base64_pdf = base64.b64encode(st.session_state["artifacts"]["pan_pdf"].read()).decode('utf-8')
-                pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
-                st.markdown(pdf_display, unsafe_allow_html=True)
+                    st.write(st.session_state["artifacts"]["basic_info"]["full_name"] + " \u2705") 
                 
-                st.subheader("Selfie")
-                st.image(st.session_state["artifacts"]["selfie"])
+                    st.subheader("Verifier bank")
+                    st.write(st.session_state['artifacts']["verifier_bank"])
 
-                st.subheader("Aadhar Video")
-                st.video(base64.b64decode(st.session_state["artifacts"]["aadhar_video"].replace("data:video/webm;base64","")))
+                    st.subheader("Aadhar card PDF")
+                    base64_pdf =  base64.b64encode(st.session_state["artifacts"]["aadhar_pdf"].read()).decode('utf-8')
+                    pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
+                    st.markdown(pdf_display, unsafe_allow_html=True)
 
-                st.subheader("PAN Video")
-                st.video(base64.b64decode(st.session_state["artifacts"]["pan_video"].replace("data:video/webm;base64","")))
-
-                st.subheader("Location")
-                st.write(st.session_state["artifacts"]["location"])
-
-                st.subheader("AI Summary")
-                st.write(st.session_state["artifacts"]["AI_Detection"])
-                st.write("\n")
-
-            
-
-
-                if st.button('Confirm and Submit KYC', key='2'):    
-                    data_on_bc = {
-
-                    }
-
-                    st.info("Uploading data")
-                    BUCKET_NAME = "uploads.blockchain-geeks-askv"
-                    upload_id = str("test")
-                    s3 = st.session_state["s3_object"].session.resource("s3")
-                    s3_client = st.session_state["s3_object"].client
-                    allowed_banks = [
-                        {
-                        "bank_name": st.session_state['artifacts']["verifier_bank"],
-                        "presigned_url":{
-                            "aadhar_pdf": "",
-                            "pan_pdf": "",
-                            "selfie": "",
-                            "aadhar_video": "",
-                            "pan_video": "",
-                            }
-                        }
-                    ]
-
-                    def upload_data(keyfile, body):
-                        global data_on_bc, allowed_banks, upload_id
-                        filename = upload_id + "/" + keyfile
-                        object = s3.Object(BUCKET_NAME, filename)
-                        result = object.put(Body=body)
-                        url = s3_client.generate_presigned_url(ClientMethod='get_object', 
-                                Params={'Bucket': BUCKET_NAME, 'Key': filename},
-                                ExpiresIn=36000)
-                        data_on_bc[keyfile] = url.split("?")[0]
-                        allowed_banks[0]["presigned_url"][keyfile] = {}
-                        for qp in url.split("?")[1].split("&"):
-                            allowed_banks[0]["presigned_url"][keyfile][qp.split("=")[0]] = qp.split("=")[1]
+                    st.subheader("PAN card PDF")
+                    base64_pdf = base64.b64encode(st.session_state["artifacts"]["pan_pdf"].read()).decode('utf-8')
+                    pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="1000" height="1000" type="application/pdf"></iframe>'
+                    st.markdown(pdf_display, unsafe_allow_html=True)
                     
-                    upload_data("aadhar_pdf", st.session_state["artifacts"]["aadhar_pdf"].getvalue())
-                    upload_data("pan_pdf", st.session_state["artifacts"]["pan_pdf"].getvalue())
-                    upload_data("aadhar_video", base64.b64decode(st.session_state["artifacts"]["aadhar_video"].replace("data:video/webm;base64","")))
-                    upload_data("pan_video", base64.b64decode(st.session_state["artifacts"]["pan_video"].replace("data:video/webm;base64","")))
-                    upload_data("selfie", st.session_state["artifacts"]["selfie"])
+                    st.subheader("Selfie")
+                    st.image(st.session_state["artifacts"]["selfie"])
 
-                    data_on_bc["location"] = st.session_state["artifacts"]["location"]
-                    data_on_bc["verifier_bank"] = st.session_state["artifacts"]["verifier_bank"]
-                    data_on_bc["AI_Detection"] = st.session_state["artifacts"]["AI_Detection"]
-                    data_on_bc["fullname"] = st.session_state["artifacts"]["basic_info"]["full_name"]
+                    st.subheader("Aadhar Video")
+                    st.video(base64.b64decode(st.session_state["artifacts"]["aadhar_video"].replace("data:video/webm;base64","")))
 
-                    st.write(data_on_bc)
-                    st.write(allowed_banks)
+                    st.subheader("PAN Video")
+                    st.video(base64.b64decode(st.session_state["artifacts"]["pan_video"].replace("data:video/webm;base64","")))
 
+                    st.subheader("Location")
+                    st.write(st.session_state["artifacts"]["location"])
+
+                    st.subheader("AI Summary")
+                    st.write(st.session_state["artifacts"]["AI_Detection"])
                     st.write("\n")
 
+            
 
-                    if st.button('Confirm and Submit KYC', key='2'):
+
+                    if st.button('Confirm and Submit KYC', key='2'):    
+                        data_on_bc = {
+
+                        }
+
+                        st.info("Uploading data")
+                        BUCKET_NAME = "uploads.blockchain-geeks-askv"
+                        upload_id = str("test")
+                        s3 = st.session_state["s3_object"].session.resource("s3")
+                        s3_client = st.session_state["s3_object"].client
+                        allowed_banks = [
+                            {
+                            "bank_name": st.session_state['artifacts']["verifier_bank"],
+                            "presigned_url":{
+                                "aadhar_pdf": "",
+                                "pan_pdf": "",
+                                "selfie": "",
+                                "aadhar_video": "",
+                                "pan_video": "",
+                                }
+                            }
+                        ]
+
+                        def upload_data(keyfile, body):
+                            global data_on_bc, allowed_banks, upload_id
+                            filename = upload_id + "/" + keyfile
+                            object = s3.Object(BUCKET_NAME, filename)
+                            result = object.put(Body=body)
+                            url = s3_client.generate_presigned_url(ClientMethod='get_object', 
+                                    Params={'Bucket': BUCKET_NAME, 'Key': filename},
+                                    ExpiresIn=36000)
+                            data_on_bc[keyfile] = url.split("?")[0]
+                            allowed_banks[0]["presigned_url"][keyfile] = {}
+                            for qp in url.split("?")[1].split("&"):
+                                allowed_banks[0]["presigned_url"][keyfile][qp.split("=")[0]] = qp.split("=")[1]
+                        
+                        upload_data("aadhar_pdf", st.session_state["artifacts"]["aadhar_pdf"].getvalue())
+                        upload_data("pan_pdf", st.session_state["artifacts"]["pan_pdf"].getvalue())
+                        upload_data("aadhar_video", base64.b64decode(st.session_state["artifacts"]["aadhar_video"].replace("data:video/webm;base64","")))
+                        upload_data("pan_video", base64.b64decode(st.session_state["artifacts"]["pan_video"].replace("data:video/webm;base64","")))
+                        upload_data("selfie", st.session_state["artifacts"]["selfie"])
+
+                        data_on_bc["location"] = st.session_state["artifacts"]["location"]
+                        data_on_bc["verifier_bank"] = st.session_state["artifacts"]["verifier_bank"]
+                        data_on_bc["AI_Detection"] = st.session_state["artifacts"]["AI_Detection"]
+                        data_on_bc["fullname"] = st.session_state["artifacts"]["basic_info"]["full_name"]
+
+                        st.write(data_on_bc)
+                        st.write(allowed_banks)
+
+                        st.write("\n")
+
                         resp = requests.post(REST_API+'/add_kyc',json = {'kyc_data':{'created_date':str(datetime.datetime.now()),'updated_date':str(datetime.datetime.now()),'expiry_date':str(datetime.datetime.now() + datetime.timedelta(days=180)),'docs':data_on_bc,'status':"NOT SUBMITTED",'assigned_to':st.session_state['artifacts']["verifier_bank"],'allowed_banks':allowed_banks},'user_data':{'private_key':st.session_state['artifacts']['private_key'],'mobile_number':st.session_state['artifacts']['mobile_num'],'password':st.session_state['artifacts']['password'],'user_type':'CUSTOMER','kyc_number':'NA'}})
                         st.success('Here is Your KYC NUMBER **' + resp.json()['data']+'** wait for verification')
                         st.session_state['artifacts']['kyc_number']=resp.json()['data']
