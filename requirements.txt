@@ -3,4 +3,7 @@ mtcnn
 boto3
 pandas
 opencv-python
-pillow
+tensorflow
+python-dotenv
+pypdfium2
+streamlit-bokeh-events
